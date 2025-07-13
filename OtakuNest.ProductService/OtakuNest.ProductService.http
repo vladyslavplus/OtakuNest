@@ -1,0 +1,6 @@
+@OtakuNest.ProductService_HostAddress = http://localhost:5207
+
+GET {{OtakuNest.ProductService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
