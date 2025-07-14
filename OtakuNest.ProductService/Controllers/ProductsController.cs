@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using OtakuNest.ProductService.DTOs;
 using OtakuNest.ProductService.Services;
 
@@ -16,6 +17,7 @@ namespace OtakuNest.ProductService.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<ProductDto>>> GetAll()
         {
             var products = await _service.GetAllAsync();
@@ -23,6 +25,7 @@ namespace OtakuNest.ProductService.Controllers
         }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<ProductDto>> GetById(Guid id)
         {
             var product = await _service.GetByIdAsync(id);
@@ -31,6 +34,7 @@ namespace OtakuNest.ProductService.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ProductDto>> Create(ProductCreateDto dto)
         {
             var created = await _service.CreateAsync(dto);
@@ -38,6 +42,7 @@ namespace OtakuNest.ProductService.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(Guid id, ProductUpdateDto dto)
         {
             var updated = await _service.UpdateAsync(id, dto);
@@ -46,6 +51,7 @@ namespace OtakuNest.ProductService.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var deleted = await _service.DeleteAsync(id);

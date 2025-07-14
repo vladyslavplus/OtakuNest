@@ -1,22 +1,23 @@
-using OtakuNest.ProductService.Extensions;
+using OtakuNest.UserService.Extensions;
+using OtakuNest.UserService.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
 builder.Services
-    .AddSwaggerWithJwt()
-    .AddAppDbContext(builder.Configuration)
-    .AddRabbitMq()
-    .AddAppServices()
-    .AddJwtAuthentication(builder.Configuration);
+    .AddAppIdentity(builder.Configuration)
+    .AddJwtAuth(builder.Configuration)
+    .AddAppMassTransit()
+    .AddApplicationServices();
 
 builder.Services.AddAuthorization();
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerWithJwt();
 
 var app = builder.Build();
 
-await app.ApplyMigrationsAsync();
+await app.SeedDatabaseAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -26,7 +27,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
 await app.RunAsync();
