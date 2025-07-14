@@ -12,12 +12,18 @@ namespace OtakuNest.UserService.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ITokenService _tokenService;
         private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public AuthService(UserManager<ApplicationUser> userManager, ITokenService tokenService, IPublishEndpoint publishEndpoint)
+        public AuthService(
+            UserManager<ApplicationUser> userManager,
+            ITokenService tokenService,
+            IPublishEndpoint publishEndpoint,
+            IHttpContextAccessor httpContextAccessor)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _publishEndpoint = publishEndpoint;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<string> RegisterAsync(UserRegisterDto dto, CancellationToken cancellationToken)
@@ -54,7 +60,19 @@ namespace OtakuNest.UserService.Services
 
             await _publishEndpoint.Publish(userCreatedEvent, cancellationToken);
 
-            return await _tokenService.GenerateTokenAsync(user);
+            var (accessToken, refreshToken) = await _tokenService.GenerateTokensAsync(user);
+
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+
+            _httpContextAccessor.HttpContext!.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+
+            return accessToken;
         }
 
         public async Task<string> LoginAsync(UserLoginDto dto, CancellationToken cancellationToken)
@@ -67,7 +85,43 @@ namespace OtakuNest.UserService.Services
             if (!passwordValid)
                 throw new UnauthorizedAccessException("Invalid password.");
 
-            return await _tokenService.GenerateTokenAsync(user);
+            var (accessToken, refreshToken) = await _tokenService.GenerateTokensAsync(user);
+
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+
+            _httpContextAccessor.HttpContext!.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+
+            return accessToken;
+        }
+
+        public async Task<(string AccessToken, string RefreshToken)> RefreshTokenAsync(string refreshToken)
+        {
+            var tokenEntity = await _tokenService.GetRefreshTokenEntityAsync(refreshToken);
+            if (tokenEntity == null || tokenEntity.Revoked != null || tokenEntity.Expires <= DateTime.UtcNow)
+                throw new UnauthorizedAccessException("Invalid refresh token.");
+
+            var user = tokenEntity.User ?? await _userManager.FindByIdAsync(tokenEntity.UserId.ToString());
+            if (user == null)
+                throw new UnauthorizedAccessException("User not found.");
+
+            await _tokenService.RevokeRefreshTokenAsync(refreshToken);
+
+            var tokens = await _tokenService.GenerateTokensAsync(user);
+            return tokens;
+        }
+        public async Task<RefreshToken?> GetRefreshTokenEntityAsync(string refreshToken)
+        {
+            return await _tokenService.GetRefreshTokenEntityAsync(refreshToken);
+        }
+        public async Task RevokeRefreshTokenAsync(string refreshToken)
+        {
+            await _tokenService.RevokeRefreshTokenAsync(refreshToken);
         }
     }
 }

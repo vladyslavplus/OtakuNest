@@ -8,7 +8,7 @@ namespace OtakuNest.UserService.Data
     public class UserDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
     {
         public UserDbContext(DbContextOptions<UserDbContext> options) : base(options) { }
-
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
