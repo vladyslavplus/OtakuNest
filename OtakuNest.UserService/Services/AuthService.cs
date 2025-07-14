@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using OtakuNest.Contracts;
 using OtakuNest.UserService.DTOs;
+using OtakuNest.UserService.Exceptions;
 using OtakuNest.UserService.Models;
 
 namespace OtakuNest.UserService.Services
@@ -35,14 +36,14 @@ namespace OtakuNest.UserService.Services
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new ApplicationException($"User creation failed: {errors}");
+                throw new UserCreationException($"User creation failed: {errors}");
             }
 
             var roleResult = await _userManager.AddToRoleAsync(user, "User");
             if (!roleResult.Succeeded)
             {
                 var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
-                throw new ApplicationException($"Adding role failed: {errors}");
+                throw new RoleAssignmentException($"Adding role failed: {errors}");
             }
 
             var userCreatedEvent = new UserCreatedEvent(
