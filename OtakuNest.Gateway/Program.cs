@@ -1,0 +1,39 @@
+using AspNetCoreRateLimit;
+using OtakuNest.Common.Extensions;
+using OtakuNest.Gateway.Middlewares;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMemoryCache();
+builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.AddInMemoryRateLimiting();
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+
+builder.Services.AddJwtBearerAuthentication(builder.Configuration);
+builder.Services.AddAuthorization();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseIpRateLimiting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapReverseProxy();
+
+await app.RunAsync();

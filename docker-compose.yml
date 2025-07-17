@@ -1,4 +1,21 @@
 services:
+  gateway:
+    build:
+      context: .
+      dockerfile: ./OtakuNest.Gateway/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Jwt__Key=QmJ0zLVzKn6hw4IcszPgQY2vDjJvYqVztuI4bq1+qk2ZCXR4DKZrGhZfrs0+NbyT
+      - Jwt__Issuer=OtakuNest.UserService
+      - Jwt__Audience=OtakuNest.Client
+    depends_on:
+      - userservice
+      - productservice
+      - cartservice
+      - orderservice
+    
   productservice:
     build:
       context: .
