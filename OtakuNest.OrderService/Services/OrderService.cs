@@ -16,22 +16,23 @@ namespace OtakuNest.OrderService.Services
         private readonly IRequestClient<CheckProductPriceRequest> _priceRequestClient;
         private readonly IRequestClient<CheckProductQuantityRequest> _quantityRequestClient;
         private readonly IPublishEndpoint _publishEndpoint;
-
+        private readonly ISortHelper<Order> _sortHelper;
         public OrderService(
             OrdersDbContext dbContext,
             IRequestClient<CheckProductPriceRequest> priceRequestClient,
             IRequestClient<CheckProductQuantityRequest> quantityRequestClient,
-            IPublishEndpoint publishEndpoint)
+            IPublishEndpoint publishEndpoint,
+            ISortHelper<Order> sortHelper)
         {
             _dbContext = dbContext;
             _priceRequestClient = priceRequestClient;
             _quantityRequestClient = quantityRequestClient;
             _publishEndpoint = publishEndpoint;
+            _sortHelper = sortHelper;
         }
 
         public async Task<PagedList<OrderDto>> GetAllOrdersAsync(
             OrderParameters parameters,
-            ISortHelper<Order> sortHelper,
             CancellationToken cancellationToken = default)
         {
             var query = _dbContext.Orders
@@ -62,7 +63,7 @@ namespace OtakuNest.OrderService.Services
             if (parameters.ProductId.HasValue)
                 query = query.Where(o => o.Items.Any(i => i.ProductId == parameters.ProductId.Value));
 
-            query = sortHelper.ApplySort(query, parameters.OrderBy);
+            query = _sortHelper.ApplySort(query, parameters.OrderBy);
 
             var pagedOrders = await PagedList<Order>.ToPagedListAsync(
                 query.AsNoTracking(),

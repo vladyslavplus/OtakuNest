@@ -2,10 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using OtakuNest.Common.Extensions;
 using OtakuNest.Common.Helpers;
-using OtakuNest.Common.Interfaces;
 using OtakuNest.OrderService.DTOs;
 using OtakuNest.OrderService.Extensions;
-using OtakuNest.OrderService.Models;
 using OtakuNest.OrderService.Parameters;
 using OtakuNest.OrderService.Services;
 
@@ -16,19 +14,16 @@ namespace OtakuNest.OrderService.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
-        private readonly ISortHelper<Order> _sortHelper;
-
-        public OrdersController(IOrderService orderService, ISortHelper<Order> sortHelper)
+        public OrdersController(IOrderService orderService)
         {
             _orderService = orderService;
-            _sortHelper = sortHelper;
         }
 
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<PagedList<OrderDto>>> GetAllOrders([FromQuery] OrderParameters parameters, CancellationToken cancellationToken)
         {
-            var orders = await _orderService.GetAllOrdersAsync(parameters, _sortHelper, cancellationToken);
+            var orders = await _orderService.GetAllOrdersAsync(parameters, cancellationToken);
             Response.AddPaginationHeader(orders);
             return Ok(orders);
         }

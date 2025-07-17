@@ -1,5 +1,6 @@
 using OtakuNest.Common.Extensions;
 using OtakuNest.OrderService.Extensions;
+using OtakuNest.OrderService.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
