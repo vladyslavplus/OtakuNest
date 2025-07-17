@@ -94,7 +94,6 @@ namespace OtakuNest.CartService.Services
             await _publishEndpoint.Publish(cartItemAdded, cancellationToken);
         }
 
-
         public async Task RemoveItemFromCartAsync(Guid userId, Guid productId, CancellationToken cancellationToken = default)
         {
             var cart = await _context.Carts

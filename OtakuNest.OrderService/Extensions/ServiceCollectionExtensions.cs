@@ -1,17 +1,16 @@
 ﻿using MassTransit;
 using Microsoft.EntityFrameworkCore;
-using OtakuNest.CartService.Consumers;
-using OtakuNest.CartService.Data;
-using OtakuNest.CartService.Services;
 using OtakuNest.Contracts;
+using OtakuNest.OrderService.Data;
+using OtakuNest.OrderService.Services;
 
-namespace OtakuNest.CartService.Extensions
+namespace OtakuNest.OrderService.Extensions
 {
     public static class ServiceCollectionExtensions
     {
         public static IServiceCollection AddAppDbContext(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<CartDbContext>(options =>
+            services.AddDbContext<OrdersDbContext>(options =>
                 options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
             return services;
         }
@@ -20,9 +19,7 @@ namespace OtakuNest.CartService.Extensions
         {
             services.AddMassTransit(x =>
             {
-                x.AddConsumer<UserCreatedConsumer>();
-                x.AddConsumer<ClearUserCartConsumer>();
-                x.AddRequestClient<CheckProductQuantityRequest>();
+                x.AddRequestClient<CheckProductPriceRequest>();
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -30,16 +27,6 @@ namespace OtakuNest.CartService.Extensions
                     {
                         h.Username("guest");
                         h.Password("guest");
-                    });
-
-                    cfg.ReceiveEndpoint("user-created-cart", e =>
-                    {
-                        e.ConfigureConsumer<UserCreatedConsumer>(context);
-                    });
-
-                    cfg.ReceiveEndpoint("cart-clear-queue", e =>
-                    {
-                        e.ConfigureConsumer<ClearUserCartConsumer>(context);
                     });
                 });
             });
@@ -50,7 +37,7 @@ namespace OtakuNest.CartService.Extensions
 
         public static IServiceCollection AddAppServices(this IServiceCollection services)
         {
-            services.AddScoped<ICartService, Services.CartService>();
+            services.AddScoped<IOrderService, Services.OrderService>();
             return services;
         }
     }

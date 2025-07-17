@@ -20,6 +20,8 @@ namespace OtakuNest.ProductService.Extensions
             services.AddMassTransit(x =>
             {
                 x.AddConsumer<CheckProductQuantityConsumer>();
+                x.AddConsumer<CheckProductPriceConsumer>();
+                x.AddConsumer<ProductQuantityUpdatedConsumer>();
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -32,6 +34,16 @@ namespace OtakuNest.ProductService.Extensions
                     cfg.ReceiveEndpoint("check-product-quantity-queue", e =>
                     {
                         e.ConfigureConsumer<CheckProductQuantityConsumer>(context);
+                    });
+
+                    cfg.ReceiveEndpoint("product-service-price-check", e =>
+                    {
+                        e.ConfigureConsumer<CheckProductPriceConsumer>(context);
+                    });
+
+                    cfg.ReceiveEndpoint("product-quantity-updated-queue", e =>
+                    {
+                        e.ConfigureConsumer<ProductQuantityUpdatedConsumer>(context);
                     });
                 });
             });
