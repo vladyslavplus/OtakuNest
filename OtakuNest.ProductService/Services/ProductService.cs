@@ -1,9 +1,12 @@
 ﻿using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using OtakuNest.Common.Helpers;
+using OtakuNest.Common.Interfaces;
 using OtakuNest.Contracts;
 using OtakuNest.ProductService.Data;
 using OtakuNest.ProductService.DTOs;
 using OtakuNest.ProductService.Models;
+using OtakuNest.ProductService.Parameters;
 
 namespace OtakuNest.ProductService.Services;
 
@@ -11,18 +14,65 @@ public class ProductService : IProductService
 {
     private readonly ProductDbContext _context;
     private readonly IPublishEndpoint _publishEndpoint;
-
-    public ProductService(ProductDbContext context, IPublishEndpoint publishEndpoint)
+    private readonly ISortHelper<Product> _sortHelper;
+    public ProductService(
+        ProductDbContext context,
+        IPublishEndpoint publishEndpoint,
+        ISortHelper<Product> sortHelper)
     {
         _context = context;
         _publishEndpoint = publishEndpoint;
+        _sortHelper = sortHelper;
     }
 
-    public async Task<IEnumerable<ProductDto>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<PagedList<ProductDto>> GetAllAsync(
+        ProductParameters parameters,
+        CancellationToken cancellationToken = default)
     {
-        return await _context.Products
-            .Select(p => MapToDto(p))
-            .ToListAsync(cancellationToken);
+        var query = _context.Products.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(parameters.Name))
+            query = query.Where(p => p.Name.Contains(parameters.Name));
+
+        if (!string.IsNullOrWhiteSpace(parameters.Category))
+            query = query.Where(p => p.Category == parameters.Category);
+
+        if (!string.IsNullOrWhiteSpace(parameters.SKU))
+            query = query.Where(p => p.SKU == parameters.SKU);
+
+        if (parameters.MinPrice.HasValue)
+            query = query.Where(p => p.Price >= parameters.MinPrice.Value);
+
+        if (parameters.MaxPrice.HasValue)
+            query = query.Where(p => p.Price <= parameters.MaxPrice.Value);
+
+        if (parameters.IsAvailable.HasValue)
+            query = query.Where(p => p.IsAvailable == parameters.IsAvailable.Value);
+
+        if (parameters.MinRating.HasValue)
+            query = query.Where(p => p.Rating >= parameters.MinRating.Value);
+
+        if (parameters.MaxRating.HasValue)
+            query = query.Where(p => p.Rating <= parameters.MaxRating.Value);
+
+        if (parameters.MinDiscount.HasValue)
+            query = query.Where(p => p.Discount >= parameters.MinDiscount.Value);
+
+        if (parameters.MaxDiscount.HasValue)
+            query = query.Where(p => p.Discount <= parameters.MaxDiscount.Value);
+
+        query = _sortHelper.ApplySort(query, parameters.OrderBy);
+
+        var paged = await PagedList<Product>.ToPagedListAsync(
+            query.AsNoTracking(),
+            parameters.PageNumber,
+            parameters.PageSize,
+            cancellationToken
+        );
+
+        var dtoList = paged.Select(MapToDto).ToList();
+
+        return new PagedList<ProductDto>(dtoList, paged.TotalCount, parameters.PageNumber, parameters.PageSize);
     }
 
     public async Task<ProductDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

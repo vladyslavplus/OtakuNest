@@ -1,3 +1,4 @@
+using OtakuNest.Common.Extensions;
 using OtakuNest.ProductService.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +11,7 @@ builder.Services
     .AddAppDbContext(builder.Configuration)
     .AddRabbitMq()
     .AddAppServices()
+    .AddCommonHelpers()
     .AddJwtAuthentication(builder.Configuration);
 
 builder.Services.AddAuthorization();
