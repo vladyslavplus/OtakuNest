@@ -1,6 +1,4 @@
-﻿using OtakuNest.OrderService.Models;
-
-namespace OtakuNest.OrderService.DTOs
+﻿namespace OtakuNest.OrderService.DTOs
 {
     public class OrderStatusUpdateDto
     {

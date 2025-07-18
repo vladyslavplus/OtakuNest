@@ -1,5 +1,4 @@
 ﻿using OtakuNest.Common.Parameters;
-using OtakuNest.OrderService.Models;
 
 namespace OtakuNest.OrderService.Parameters
 {

@@ -1,3 +1,4 @@
+using OtakuNest.Common.Extensions;
 using OtakuNest.UserService.Extensions;
 using OtakuNest.UserService.Middlewares;
 
@@ -5,15 +6,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services
+    .AddSwaggerWithJwt()
     .AddAppIdentity(builder.Configuration)
-    .AddJwtAuth(builder.Configuration)
+    .AddJwtBearerAuthentication(builder.Configuration)
     .AddAppMassTransit()
     .AddApplicationServices();
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerWithJwt();
 
 var app = builder.Build();
 

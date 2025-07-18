@@ -13,7 +13,7 @@ builder.Services
     .AddRabbitMq()
     .AddAppServices()
     .AddCommonHelpers()
-    .AddJwtAuthentication(builder.Configuration);
+    .AddJwtBearerAuthentication(builder.Configuration);
 
 builder.Services.AddAuthorization();
 

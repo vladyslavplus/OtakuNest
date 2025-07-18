@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OtakuNest.ProductService.Models;
-using System;
 
 namespace OtakuNest.ProductService.Data
 {

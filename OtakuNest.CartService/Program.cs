@@ -1,5 +1,6 @@
 using OtakuNest.CartService.Extensions;
 using OtakuNest.CartService.Middlewares;
+using OtakuNest.Common.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,7 +12,7 @@ builder.Services
     .AddAppDbContext(builder.Configuration)
     .AddRabbitMq()
     .AddAppServices()
-    .AddJwtAuthentication(builder.Configuration);
+    .AddJwtBearerAuthentication(builder.Configuration);
 
 builder.Services.AddAuthorization();
 

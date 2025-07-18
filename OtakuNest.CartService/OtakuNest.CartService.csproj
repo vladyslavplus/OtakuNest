@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\OtakuNest.Common\OtakuNest.Common.csproj" />
     <ProjectReference Include="..\OtakuNest.Contracts\OtakuNest.Contracts.csproj" />
   </ItemGroup>
 

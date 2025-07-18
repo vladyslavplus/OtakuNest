@@ -25,7 +25,7 @@ namespace OtakuNest.ProductService.Consumers
             product.Quantity += message.QuantityChange;
 
             if (product.Quantity < 0)
-                product.Quantity = 0; 
+                product.Quantity = 0;
 
             await _dbContext.SaveChangesAsync();
         }

@@ -1,4 +1,4 @@
-﻿    using MassTransit;
+﻿using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using OtakuNest.ProductService.Consumers;
 using OtakuNest.ProductService.Data;

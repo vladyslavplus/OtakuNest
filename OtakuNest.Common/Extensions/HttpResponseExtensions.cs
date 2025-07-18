@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.Text.Json;
+﻿using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using OtakuNest.Common.Helpers;
 
 namespace OtakuNest.Common.Extensions

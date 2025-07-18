@@ -1,7 +1,5 @@
 ﻿using OtakuNest.Common.Helpers;
-using OtakuNest.Common.Interfaces;
 using OtakuNest.OrderService.DTOs;
-using OtakuNest.OrderService.Models;
 using OtakuNest.OrderService.Parameters;
 
 namespace OtakuNest.OrderService.Services

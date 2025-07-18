@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
 
-namespace OtakuNest.CartService.Extensions
+namespace OtakuNest.Common.Extensions
 {
     public static class SwaggerExtensions
     {

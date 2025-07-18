@@ -1,7 +1,7 @@
-﻿using System.Reflection;
+﻿using System.Linq.Dynamic.Core;
+using System.Reflection;
 using System.Text;
 using OtakuNest.Common.Interfaces;
-using System.Linq.Dynamic.Core;
 
 namespace OtakuNest.Common.Helpers
 {

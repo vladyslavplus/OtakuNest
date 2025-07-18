@@ -1,4 +1,4 @@
-﻿    namespace OtakuNest.OrderService.DTOs
+﻿namespace OtakuNest.OrderService.DTOs
 {
     public class OrderItemDto
     {
