@@ -1,0 +1,169 @@
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    min-height: 200px;
+}
+
+.loading-container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 1000;
+    min-height: 100vh;
+}
+
+.spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.spinner.small {
+    width: 20px;
+    height: 20px;
+    border-width: 2px;
+}
+
+.spinner.medium {
+    width: 40px;
+    height: 40px;
+    border-width: 3px;
+}
+
+.spinner.large {
+    width: 60px;
+    height: 60px;
+    border-width: 4px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-message {
+    margin-top: 1rem;
+    color: #666;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+/* Альтернативний стиль з градієнтом */
+.spinner.gradient {
+    background: conic-gradient(from 0deg, #007bff, #0056b3, #007bff);
+    border: none;
+    border-radius: 50%;
+    position: relative;
+}
+
+.spinner.gradient::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    right: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+}
+
+/* Пульсуючий ефект */
+.spinner.pulse {
+    background: #007bff;
+    border: none;
+    animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1) rotate(180deg);
+    }
+}
+
+/* Множинні кружечки */
+.spinner-dots {
+    display: inline-block;
+    position: relative;
+    width: 40px;
+    height: 40px;
+}
+
+.spinner-dots div {
+    position: absolute;
+    top: 16px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #007bff;
+    animation-timing-function: cubic-bezier(0, 1, 1, 0);
+}
+
+.spinner-dots div:nth-child(1) {
+    left: 4px;
+    animation: dots1 0.6s infinite;
+}
+
+.spinner-dots div:nth-child(2) {
+    left: 4px;
+    animation: dots2 0.6s infinite;
+}
+
+.spinner-dots div:nth-child(3) {
+    left: 16px;
+    animation: dots2 0.6s infinite;
+}
+
+.spinner-dots div:nth-child(4) {
+    left: 28px;
+    animation: dots3 0.6s infinite;
+}
+
+@keyframes dots1 {
+    0% {
+        transform: scale(0);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes dots2 {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    100% {
+        transform: translate(12px, 0);
+    }
+}
+
+@keyframes dots3 {
+    0% {
+        transform: scale(1);
+    }
+
+    100% {
+        transform: scale(0);
+    }
+}

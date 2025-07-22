@@ -1,0 +1,28 @@
+<app-hero-section></app-hero-section>
+
+<app-category-filter (categorySelected)="onCategorySelected($event)"></app-category-filter>
+
+<main class="products-grid" [ngClass]="{'loading': loading}">
+  <ng-container *ngIf="!loading && !error">
+    <app-product-card
+      *ngFor="let product of products"
+      [product]="product">
+    </app-product-card>
+  </ng-container>
+  
+  <app-loading-spinner 
+    *ngIf="loading" 
+    message="Loading products..."
+    size="large"
+    containerClass="spinner-container">
+  </app-loading-spinner>
+  
+  <div *ngIf="error" class="error-message">
+    <div class="error-icon">⚠️</div>
+    <p>{{ error }}</p>
+  </div>
+</main>
+
+<div class="show-more-container">
+  <a [routerLink]="['/products']" class="show-more-btn">Show More Products</a>
+</div>

@@ -1,0 +1,9 @@
+<div class="loading-container" [ngClass]="containerClass">
+    <div *ngIf="spinnerType === 'classic'" class="spinner" [ngClass]="size"></div>
+    <div *ngIf="spinnerType === 'gradient'" class="spinner gradient" [ngClass]="size"></div>
+    <div *ngIf="spinnerType === 'pulse'" class="spinner pulse" [ngClass]="size"></div>
+    <div *ngIf="spinnerType === 'dots'" class="spinner-dots">
+      <div></div><div></div><div></div><div></div>
+    </div>
+    <p *ngIf="message" class="loading-message">{{ message }}</p>
+  </div>

@@ -1,0 +1,16 @@
+<div class="product-card" [attr.data-category]="product.category">
+  <div class="product-image">
+    <ng-container *ngIf="product.imageUrl; else noImage">
+      <img [src]="product.imageUrl" [alt]="product.name" />
+    </ng-container>
+    <ng-template #noImage>
+      <div class="no-image-placeholder">
+        📦
+      </div>
+    </ng-template>
+  </div>
+  <div class="product-info">
+    <h3 class="product-title">{{ product.name }}</h3>
+    <p class="product-price">${{ product.price }}</p>
+  </div>
+</div>

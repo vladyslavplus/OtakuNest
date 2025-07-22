@@ -1,0 +1,51 @@
+<header class="header">
+  <div class="nav-container">
+    <a href="#" (click)="handleLogoClick($event)" class="logo">🏮 OtakuNest</a>
+    
+    <nav class="desktop-nav">
+      <ul class="nav-menu">
+        <li><a href="#figures">Figures</a></li>
+        <li><a href="#posters">Posters</a></li>
+        <li><a href="#clothes">Clothing</a></li>
+        <li><a [routerLink]="['/products']">More</a></li>
+      </ul>
+    </nav>
+    
+    <div class="header-right">
+      <div class="search-container">
+        <input type="text" class="search-input" placeholder="Search products...">
+        <button class="search-btn">🔍</button>
+      </div>
+      
+      <button class="mobile-search-btn" (click)="toggleMobileSearch()" *ngIf="isMobile">
+        🔍
+      </button>
+      
+      <div class="cart-container" (click)="toggleCart()">
+        <div class="cart-icon">🛒</div>
+        <div class="cart-count" id="cartCount">3</div>
+      </div>
+      
+      <div class="hamburger" (click)="toggleMobileMenu()" *ngIf="isMobile" 
+           [class.active]="isMobileMenuOpen">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="mobile-menu" [class.active]="isMobileMenuOpen" (click)="onMobileMenuClick($event)">
+    <ul class="mobile-nav-menu">
+      <li><a href="#figures" (click)="closeMobileMenu()">Figures</a></li>
+      <li><a href="#posters" (click)="closeMobileMenu()">Posters</a></li>
+      <li><a href="#clothes" (click)="closeMobileMenu()">Clothing</a></li>
+      <li><a [routerLink]="['/products']" (click)="closeMobileMenu()">More</a></li>
+    </ul>
+  </div>
+  
+  <div class="mobile-search" [class.active]="isMobileSearchOpen" *ngIf="isMobile">
+    <input type="text" class="mobile-search-input" placeholder="Search products..." 
+           (keyup.enter)="closeMobileMenu()">
+  </div>
+</header>
