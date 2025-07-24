@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
+import { map, Observable } from 'rxjs';
 import { Product } from '../models/product.model';
+import { ProductQueryParams } from '../models/query-params.model';
+import { PaginatedResult } from '../../../core/pagination/paginated-result.model';
 
 @Injectable({
   providedIn: 'root'
@@ -11,9 +13,27 @@ export class ProductService {
 
   constructor(private http: HttpClient) {}
 
-  getProducts(category: string, pageSize: number = 6): Observable<Product[]> {
-    const url = `${this.apiUrl}?Category=${category}&PageSize=${pageSize}`;
-    return this.http.get<Product[]>(url);
+  getProducts(params : ProductQueryParams): Observable<PaginatedResult<Product[]>> {
+    let httpParams = new HttpParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        httpParams = httpParams.set(key, value.toString());
+      }
+    });
+
+    return this.http.get<Product[]>(this.apiUrl, {
+      params: httpParams,
+      observe: 'response'
+    }).pipe(
+      map((response: HttpResponse<Product[]>) => {
+        const paginatedResult: PaginatedResult<Product[]> = {
+          data: response.body || [],
+          pagination: JSON.parse(response.headers.get('X-Pagination') || '{}')
+        };
+        return paginatedResult;
+      })
+    );
   }  
 
   getProductById(id: string): Observable<Product> {

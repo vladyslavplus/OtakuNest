@@ -1,0 +1,164 @@
+.filters-panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  font-family: 'Poppins', sans-serif;
+  color: #334155;
+}
+
+.filters-panel h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.filters-panel label {
+  font-weight: 500;
+  font-size: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.filters-panel input,
+.filters-panel select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  transition: border-color 0.2s;
+}
+
+.filters-panel input:focus,
+.filters-panel select:focus {
+  border-color: #6366f1;
+  outline: none;
+}
+
+.filters-panel button {
+  padding: 0.6rem 1rem;
+  border: none;
+  background: linear-gradient(to right, #6366f1, #8b5cf6);
+  color: #fff;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.filters-panel button:hover {
+  background: linear-gradient(to right, #4f46e5, #7c3aed);
+}
+
+.price-range-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.range-values {
+  font-size: 0.85rem;
+  color: #4b5563;
+  text-align: center;
+}
+
+::ng-deep .ngx-slider {
+  height: 6px !important;
+  margin: 15px 0 25px 0 !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-bar {
+  background: #e2e8f0 !important;
+  height: 6px !important;
+  border-radius: 3px !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-selection {
+  background: linear-gradient(to right, #6366f1, #8b5cf6) !important;
+  height: 6px !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.2) !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-pointer {
+  width: 18px !important;
+  height: 18px !important;
+  top: -6px !important;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  border: 2px solid #ffffff !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3) !important;
+  transition: none !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-pointer:hover {
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.5) !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-pointer.ngx-slider-active {
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.6) !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-bubble {
+  display: none !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-pointer:hover + .ngx-slider-bubble {
+  display: block !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  color: #334155 !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  border-radius: 6px !important;
+  padding: 3px 6px !important;
+  font-size: 0.8rem !important;
+  font-weight: 500 !important;
+  font-family: 'Poppins', sans-serif !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-bubble.ngx-slider-limit {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-tick {
+  background: #cbd5e1 !important;
+  width: 2px !important;
+  height: 10px !important;
+  border-radius: 1px !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-tick.ngx-slider-selected {
+  background: #6366f1 !important;
+}
+
+::ng-deep .ngx-slider .ngx-slider-tick-value {
+  color: #64748b !important;
+  font-size: 0.75rem !important;
+  font-family: 'Poppins', sans-serif !important;
+}
+
+::ng-deep .ngx-slider.ngx-slider-disabled .ngx-slider-bar {
+  background: #f1f5f9 !important;
+}
+
+::ng-deep .ngx-slider.ngx-slider-disabled .ngx-slider-pointer {
+  background: #94a3b8 !important;
+  cursor: not-allowed !important;
+}
+
+@media (max-width: 768px) {
+  ::ng-deep .ngx-slider .ngx-slider-pointer {
+    width: 20px !important;
+    height: 20px !important;
+    top: -7px !important;
+  }
+}

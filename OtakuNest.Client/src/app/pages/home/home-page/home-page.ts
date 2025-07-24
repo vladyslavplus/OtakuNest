@@ -8,6 +8,8 @@ import { ProductCard } from '../../../shared/components/product-card/product-car
 import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 import { delay } from 'rxjs';
 import { RouterModule } from '@angular/router';
+import { PaginatedResult } from '../../../core/pagination/paginated-result.model';
+import { ProductQueryParams } from '../../../features/product/models/query-params.model';
 
 @Component({
   selector: 'app-home-page',
@@ -21,6 +23,7 @@ export class HomePage implements OnInit{
   loading = false;
   error = '';
   selectedCategory = 'Figures';
+  pagination: PaginatedResult<Product[]>['pagination'] | null = null;
 
   constructor(private productService: ProductService) {}
 
@@ -36,17 +39,25 @@ export class HomePage implements OnInit{
   private fetchProducts(category: string) {
     this.loading = true;
     this.error = '';
-    this.productService.getProducts(category)
-    .pipe(delay(500))
-    .subscribe({
-      next: (data) => {
-        this.products = data;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = 'Can\'t load the products.';
-        this.loading = false;
-      }
-    });
+
+    const params: ProductQueryParams = {
+      category: category,
+      pageNumber: 1,
+      pageSize: 6
+    };
+
+    this.productService.getProducts(params)
+      .pipe(delay(500))
+      .subscribe({
+        next: (result) => {
+          this.products = result.data;
+          this.pagination = result.pagination;
+          this.loading = false;
+        },
+        error: (err) => {
+          this.error = 'Can\'t load the products.';
+          this.loading = false;
+        }
+      });
   }
 }

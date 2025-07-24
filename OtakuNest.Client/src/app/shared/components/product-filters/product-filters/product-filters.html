@@ -1,0 +1,78 @@
+<div class="filters-panel">
+  <h3>Filter Products</h3>
+
+  <label>
+    Category:
+    <select [(ngModel)]="filters.category" (change)="emitFilters()">
+      <option value="">All</option>
+      <option value="Figures">Figures</option>
+      <option value="Posters">Posters</option>
+      <option value="Clothing">Clothing</option>
+      <option value="Accessories">Accessories</option>
+      <option value="Manga">Manga</option>
+    </select>
+  </label>
+
+  <div class="price-range-wrapper">
+    <label>Price Range: </label>
+
+    <ngx-slider [(value)]="filters.minPrice!" [(highValue)]="filters.maxPrice!" [options]="priceSliderOptions"
+      (userChangeEnd)="emitFilters()"></ngx-slider>
+
+    <div class="range-values">
+      ${{ filters.minPrice }} — ${{ filters.maxPrice }}
+    </div>
+  </div>
+
+  <label>
+    Min Rating:
+    <input
+      type="number"
+      step="0.1"
+      min="0"
+      max="5"
+      [value]="filters.minRating || ''"
+      (input)="onRatingInput($event, 'minRating')"
+      placeholder="0-5"
+    />
+  </label>
+
+  <label>
+    Max Rating:
+    <input
+      type="number"
+      step="0.1"
+      min="0"
+      max="5"
+      [value]="filters.maxRating || ''"
+      (input)="onRatingInput($event, 'maxRating')"
+      placeholder="0-5"
+    />
+  </label>
+
+  <label>
+    Min Discount:
+    <input
+      type="number"
+      min="0"
+      max="100"
+      [value]="filters.minDiscount || ''"
+      (input)="onDiscountInput($event, 'minDiscount')"
+      placeholder="0-100"
+    />
+  </label>
+
+  <label>
+    Max Discount:
+    <input
+      type="number"
+      min="0"
+      max="100"
+      [value]="filters.maxDiscount || ''"
+      (input)="onDiscountInput($event, 'maxDiscount')"
+      placeholder="0-100"
+    />
+  </label> 
+
+  <button (click)="resetFilters()">Reset Filters</button>
+</div>

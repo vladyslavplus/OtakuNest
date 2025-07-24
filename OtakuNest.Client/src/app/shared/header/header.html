@@ -13,8 +13,40 @@
     
     <div class="header-right">
       <div class="search-container">
-        <input type="text" class="search-input" placeholder="Search products...">
-        <button class="search-btn">🔍</button>
+        <input 
+          type="text" 
+          class="search-input" 
+          placeholder="Search products..."
+          [(ngModel)]="searchQuery"
+          (input)="onSearchInput($event)"
+          (focus)="onSearchFocus()"
+          (blur)="onSearchBlur()"
+          #searchInput>
+        <button class="search-btn" (click)="performSearch()">🔍</button>
+        
+        <div class="search-dropdown" [class.active]="showSearchDropdown && (searchResults.length > 0 || showNoResults)">
+          <div class="search-results" *ngIf="searchResults.length > 0">
+            <div 
+              class="search-result-item"
+              *ngFor="let product of searchResults"
+              (click)="selectProduct(product)">
+              <img [src]="product.imageUrl" [alt]="product.name" class="result-image">
+              <div class="result-info">
+                <h4 class="result-name">{{ product.name }}</h4>
+                <p class="result-price">${{ product.price }}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="no-results" *ngIf="showNoResults && searchQuery.length > 0">
+            <span>No products found</span>
+          </div>
+          
+          <div class="search-loading" *ngIf="isSearching">
+            <div class="loading-spinner-small"></div>
+            <span>Searching...</span>
+          </div>
+        </div>
       </div>
       
       <button class="mobile-search-btn" (click)="toggleMobileSearch()" *ngIf="isMobile">
@@ -44,8 +76,40 @@
     </ul>
   </div>
   
-  <div class="mobile-search" [class.active]="isMobileSearchOpen" *ngIf="isMobile">
-    <input type="text" class="mobile-search-input" placeholder="Search products..." 
-           (keyup.enter)="closeMobileMenu()">
+  <div class="mobile-search" [class.active]="isMobileSearchOpen" *ngIf="isMobile && isMobileSearchOpen">
+    <div class="mobile-search-wrapper">
+      <input 
+        type="text" 
+        class="mobile-search-input" 
+        placeholder="Search products..."
+        [(ngModel)]="mobileSearchQuery"
+        (input)="onMobileSearchInput($event)"
+        (keyup.enter)="performMobileSearch()">
+      
+      <div class="mobile-search-dropdown" [class.active]="showMobileSearchDropdown && (mobileSearchResults.length > 0 || showMobileNoResults)">
+        <div class="search-results" *ngIf="mobileSearchResults.length > 0">
+          <div 
+            class="search-result-item"
+            *ngFor="let product of mobileSearchResults"
+            (click)="selectMobileProduct(product)">
+            <img [src]="product.imageUrl" [alt]="product.name" class="result-image">
+            <div class="result-info">
+              <h4 class="result-name">{{ product.name }}</h4>
+              <p class="result-price">${{ product.price }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="no-results" *ngIf="showMobileNoResults && mobileSearchQuery.length > 0">
+          <span>No products found</span>
+        </div>
+        
+        <div class="search-loading" *ngIf="isMobileSearching">
+          <div class="loading-spinner-small"></div>
+          <span>Searching...</span>
+        </div>
+
+      </div>
+    </div>
   </div>
 </header>
