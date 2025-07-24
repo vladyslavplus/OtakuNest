@@ -109,4 +109,10 @@ export class ProductsPage implements OnInit {
       this.changePage(page);
     }
   }
+
+  onSortChangedWithRef(sortValue: string): void {
+    this.filters.orderBy = sortValue || undefined;
+    this.filters.pageNumber = 1;
+    this.onFiltersChanged(this.filters);
+  }
 }

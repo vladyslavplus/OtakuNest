@@ -19,10 +19,16 @@
     font-weight: 400;
 }
 
-.breadcrumb {
+.breadcrumb-sort-container {
     max-width: 1200px;
-    margin: 2rem auto;
+    margin: 1rem auto 0.5rem auto;
     padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.breadcrumb {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -39,10 +45,60 @@
     color: #4f46e5;
 }
 
+/* Sort Container Styles */
+.sort-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sort-container label {
+    font-weight: 500;
+    color: #64748b;
+    font-size: 0.9rem;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.sort-container select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #374151;
+    font-size: 0.9rem;
+    font-weight: 400;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    padding-right: 2rem;
+    min-width: 160px;
+}
+
+.sort-container select:focus {
+    outline: none;
+    border-color: #6366f1;
+}
+
+.sort-container select:hover {
+    border-color: #9ca3af;
+}
+
+.sort-container select option {
+    padding: 0.5rem;
+    font-weight: 400;
+    color: #374151;
+    background: #ffffff;
+}
+
 .products-layout {
     display: flex;
     gap: 2rem;
-    padding: 2rem;
+    padding: 1rem 2rem 2rem 2rem;
     max-width: 1200px;
     margin: 0 auto;
 }
@@ -141,6 +197,27 @@
 }
 
 @media (max-width: 768px) {
+    .breadcrumb-sort-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        padding: 0 1rem;
+    }
+
+    .breadcrumb {
+        justify-content: center;
+    }
+
+    .sort-container {
+        min-width: auto;
+        width: auto;
+        justify-content: flex-end;
+    }
+
+    .sort-container select {
+        min-width: 140px;
+    }
+
     .products-layout {
         flex-direction: column;
         padding: 1rem;
@@ -156,6 +233,24 @@
 
     .products-grid {
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .breadcrumb-sort-container {
+        padding: 0 0.75rem;
+    }
+
+    .sort-container {
+        gap: 0.5rem;
+    }
+
+    .sort-container select {
+        padding: 0.375rem 0.5rem;
+        padding-right: 1.75rem;
+        background-size: 0.875rem;
+        background-position: right 0.375rem center;
+        min-width: 120px;
     }
 }
 

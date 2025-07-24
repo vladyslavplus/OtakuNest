@@ -11,4 +11,5 @@ export interface ProductQueryParams {
     maxDiscount?: number;
     pageNumber?: number;
     pageSize?: number;
+    orderBy?: string;
 }

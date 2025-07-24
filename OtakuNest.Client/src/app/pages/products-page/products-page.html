@@ -3,10 +3,24 @@
     <p class="page-subtitle">Discover our complete collection of anime merchandise</p>
 </section>
 
-<div class="breadcrumb">
-    <a [routerLink]="['/']">Home</a>
-    <span>/</span>
-    <span>Products</span>
+<div class="breadcrumb-sort-container">
+    <div class="breadcrumb">
+        <a [routerLink]="['/']">Home</a>
+        <span>/</span>
+        <span>Products</span>
+    </div>
+    <div class="sort-container">
+        <label for="sortSelect">Sort by:</label>
+        <select id="sortSelect" #sortSelect (change)="onSortChangedWithRef(sortSelect.value)">
+            <option value="">Default</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="name desc">Name (Z-A)</option>
+            <option value="price">Price (Low to High)</option>
+            <option value="price desc">Price (High to Low)</option>
+            <option value="rating">Rating (Low to High)</option>
+            <option value="rating desc">Rating (High to Low)</option>
+        </select>
+    </div>
 </div>
 
 <div class="products-layout">
@@ -38,28 +52,20 @@
         </ng-template>
 
         <div *ngIf="pagination && pagination.totalPages > 1" class="pagination-container">
-            <button 
-                class="pagination-arrow" 
-                (click)="changePage(pagination.currentPage - 1)"
+            <button class="pagination-arrow" (click)="changePage(pagination.currentPage - 1)"
                 [disabled]="!pagination.hasPrevious">
                 ←
             </button>
-            
+
             <div class="pagination-numbers">
-                <button 
-                    *ngFor="let page of getVisiblePages()" 
-                    class="pagination-number"
-                    [class.active]="page === pagination.currentPage"
-                    [class.ellipsis]="page === '...'"
-                    [disabled]="page === '...'"
-                    (click)="handlePageClick(page)">
+                <button *ngFor="let page of getVisiblePages()" class="pagination-number"
+                    [class.active]="page === pagination.currentPage" [class.ellipsis]="page === '...'"
+                    [disabled]="page === '...'" (click)="handlePageClick(page)">
                     {{ page }}
                 </button>
             </div>
-            
-            <button 
-                class="pagination-arrow" 
-                (click)="changePage(pagination.currentPage + 1)" 
+
+            <button class="pagination-arrow" (click)="changePage(pagination.currentPage + 1)"
                 [disabled]="!pagination.hasNext">
                 →
             </button>
