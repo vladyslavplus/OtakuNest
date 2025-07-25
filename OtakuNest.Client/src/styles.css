@@ -15,3 +15,7 @@ body {
     line-height: 1.6;
     overflow-x: hidden;
 }
+
+body:has(.auth-container) .footer {
+    margin-top: 0 !important;
+}
