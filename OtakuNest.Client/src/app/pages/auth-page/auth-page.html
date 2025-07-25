@@ -1,25 +1,75 @@
 <div class="auth-container">
-    <h2>{{ isLoginMode ? 'Login' : 'Register' }}</h2>
-  
-    <form [formGroup]="authForm" (ngSubmit)="onSubmit()">
-      <div *ngIf="!isLoginMode">
-        <label for="userName">Username</label>
-        <input id="userName" formControlName="userName" />
+  <div class="auth-card">
+    <div class="auth-header">
+      <h2 class="auth-title" [class.switching]="isSwitching">
+        {{ isLoginMode ? 'Welcome Back' : 'Create Account' }}
+      </h2>
+      <p class="auth-subtitle">
+        {{ isLoginMode ? 'Sign in to your account to continue' : 'Join us and start your journey today' }}
+      </p>
+    </div>
+
+    <form class="auth-form" [formGroup]="authForm" (ngSubmit)="onSubmit()">
+      <div class="form-group username" [class.show]="!isLoginMode">
+        <label class="form-label" for="userName">Username</label>
+        <input 
+          id="userName" 
+          class="form-input"
+          formControlName="userName" 
+          placeholder="Enter your username"
+          autocomplete="name"
+        />
       </div>
-  
-      <label for="email">Email</label>
-      <input id="email" formControlName="email" />
-  
-      <label for="password">Password</label>
-      <input id="password" type="password" formControlName="password" />
-  
-      <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
-  
-      <button type="submit">{{ isLoginMode ? 'Login' : 'Register' }}</button>
+
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input 
+          id="email" 
+          class="form-input"
+          type="email"
+          formControlName="email" 
+          placeholder="Enter your email"
+          autocomplete="email"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input 
+          id="password" 
+          class="form-input"
+          type="password" 
+          formControlName="password" 
+          placeholder="Enter your password"
+          autocomplete="new-password"
+        />
+      </div>
+
+      <div class="error-message" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+
+      <button 
+        type="submit" 
+        class="auth-button"
+        [class.loading]="isLoading"
+        [disabled]="authForm.invalid || isLoading"
+      >
+        <span>{{ isLoginMode ? 'Sign In' : 'Create Account' }}</span>
+      </button>
     </form>
-  
-    <button (click)="toggleMode()">
-      Switch to {{ isLoginMode ? 'Register' : 'Login' }}
+
+    <div class="auth-divider">
+      <span>or</span>
+    </div>
+
+    <button 
+      type="button"
+      class="toggle-button" 
+      (click)="toggleMode()"
+      [disabled]="isLoading"
+    >
+      {{ isLoginMode ? 'Need an account? Sign up' : 'Already have an account? Sign in' }}
     </button>
   </div>
-  
+</div>
