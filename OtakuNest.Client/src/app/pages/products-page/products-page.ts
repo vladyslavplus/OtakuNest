@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { ProductFilters } from '../../shared/components/product-filters/product-filters/product-filters';
 import { ProductCard } from '../../shared/components/product-card/product-card';
 import { Product } from '../../features/product/models/product.model';
@@ -15,6 +15,8 @@ import { ProductQueryParams } from '../../features/product/models/query-params.m
   styleUrl: './products-page.css'
 })
 export class ProductsPage implements OnInit {
+  @ViewChild(ProductFilters) productFiltersComponent!: ProductFilters;
+
   products: Product[] = [];
   pagination: PaginatedResult<Product[]>['pagination'] | null = null;
   isLoading: boolean = false;
@@ -25,13 +27,45 @@ export class ProductsPage implements OnInit {
     pageSize: 12
   };
 
-  constructor(private productService: ProductService) { }
+  constructor(
+    private productService: ProductService,
+    private route: ActivatedRoute
+  ) { }
 
   ngOnInit(): void {
-    this.onFiltersChanged({
-      pageNumber: 1,
-      pageSize: 12
+    this.route.queryParams.subscribe(params => {
+      const category = params['category'];
+      const sort = params['sort'];
+      const search = params['search'];
+
+      this.filters = {
+        ...this.filters,
+        category: category || undefined,
+        orderBy: sort || undefined,
+        name: search || undefined,
+        pageNumber: 1
+      };
+
+      if (this.productFiltersComponent && category) {
+        this.productFiltersComponent.setCategory(category); 
+      }
+
+      this.onFiltersChanged(this.filters);
     });
+  }
+
+  onCategorySelected(category: string): void {
+    this.filters = {
+      ...this.filters,
+      category,
+      pageNumber: 1
+    };
+
+    if (this.productFiltersComponent) {
+      this.productFiltersComponent.setCategory(category);
+    }
+
+    this.onFiltersChanged(this.filters);
   }
 
   onFiltersChanged(filters: ProductQueryParams) {

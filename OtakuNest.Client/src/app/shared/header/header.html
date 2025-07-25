@@ -1,35 +1,25 @@
 <header class="header">
   <div class="nav-container">
     <a href="#" (click)="handleLogoClick($event)" class="logo">🏮 OtakuNest</a>
-    
+
     <nav class="desktop-nav">
       <ul class="nav-menu">
-        <li><a href="#figures">Figures</a></li>
-        <li><a href="#posters">Posters</a></li>
-        <li><a href="#clothes">Clothing</a></li>
+        <li><a (click)="navigateToCategory('Figures')">Figures</a></li>
+        <li><a (click)="navigateToCategory('Posters')">Posters</a></li>
+        <li><a (click)="navigateToCategory('Clothing')">Clothing</a></li>
         <li><a [routerLink]="['/products']">More</a></li>
       </ul>
     </nav>
-    
+
     <div class="header-right">
       <div class="search-container">
-        <input 
-          type="text" 
-          class="search-input" 
-          placeholder="Search products..."
-          [(ngModel)]="searchQuery"
-          (input)="onSearchInput($event)"
-          (focus)="onSearchFocus()"
-          (blur)="onSearchBlur()"
-          #searchInput>
+        <input type="text" class="search-input" placeholder="Search products..." [(ngModel)]="searchQuery"
+          (input)="onSearchInput($event)" (focus)="onSearchFocus()" (blur)="onSearchBlur()" #searchInput>
         <button class="search-btn" (click)="performSearch()">🔍</button>
-        
+
         <div class="search-dropdown" [class.active]="showSearchDropdown && (searchResults.length > 0 || showNoResults)">
           <div class="search-results" *ngIf="searchResults.length > 0">
-            <div 
-              class="search-result-item"
-              *ngFor="let product of searchResults"
-              (click)="selectProduct(product)">
+            <div class="search-result-item" *ngFor="let product of searchResults" (click)="selectProduct(product)">
               <img [src]="product.imageUrl" [alt]="product.name" class="result-image">
               <div class="result-info">
                 <h4 class="result-name">{{ product.name }}</h4>
@@ -37,36 +27,50 @@
               </div>
             </div>
           </div>
-          
+
           <div class="no-results" *ngIf="showNoResults && searchQuery.length > 0">
             <span>No products found</span>
           </div>
-          
+
           <div class="search-loading" *ngIf="isSearching">
             <div class="loading-spinner-small"></div>
             <span>Searching...</span>
           </div>
         </div>
       </div>
-      
+
       <button class="mobile-search-btn" (click)="toggleMobileSearch()" *ngIf="isMobile">
         🔍
       </button>
-      
+
       <div class="cart-container" (click)="toggleCart()">
         <div class="cart-icon">🛒</div>
         <div class="cart-count" id="cartCount">3</div>
       </div>
-      
-      <div class="hamburger" (click)="toggleMobileMenu()" *ngIf="isMobile" 
-           [class.active]="isMobileMenuOpen">
+
+      <div class="account-container">
+        <button class="account-btn" (click)="handleAccountClick()" [title]="isAuthenticated ? 'My Account' : 'Sign In'">
+          <div class="account-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </div>
+          <span class="account-text">{{ isAuthenticated ? 'Account' : 'Sign In' }}</span>
+        </button>
+      </div>
+
+
+      <div class="hamburger" (click)="toggleMobileMenu()" *ngIf="isMobile" [class.active]="isMobileMenuOpen">
         <span></span>
         <span></span>
         <span></span>
       </div>
     </div>
   </div>
-  
+
   <div class="mobile-menu" [class.active]="isMobileMenuOpen" (click)="onMobileMenuClick($event)">
     <ul class="mobile-nav-menu">
       <li><a href="#figures" (click)="closeMobileMenu()">Figures</a></li>
@@ -75,22 +79,16 @@
       <li><a [routerLink]="['/products']" (click)="closeMobileMenu()">More</a></li>
     </ul>
   </div>
-  
+
   <div class="mobile-search" [class.active]="isMobileSearchOpen" *ngIf="isMobile && isMobileSearchOpen">
     <div class="mobile-search-wrapper">
-      <input 
-        type="text" 
-        class="mobile-search-input" 
-        placeholder="Search products..."
-        [(ngModel)]="mobileSearchQuery"
-        (input)="onMobileSearchInput($event)"
-        (keyup.enter)="performMobileSearch()">
-      
-      <div class="mobile-search-dropdown" [class.active]="showMobileSearchDropdown && (mobileSearchResults.length > 0 || showMobileNoResults)">
+      <input type="text" class="mobile-search-input" placeholder="Search products..." [(ngModel)]="mobileSearchQuery"
+        (input)="onMobileSearchInput($event)" (keyup.enter)="performMobileSearch()">
+
+      <div class="mobile-search-dropdown"
+        [class.active]="showMobileSearchDropdown && (mobileSearchResults.length > 0 || showMobileNoResults)">
         <div class="search-results" *ngIf="mobileSearchResults.length > 0">
-          <div 
-            class="search-result-item"
-            *ngFor="let product of mobileSearchResults"
+          <div class="search-result-item" *ngFor="let product of mobileSearchResults"
             (click)="selectMobileProduct(product)">
             <img [src]="product.imageUrl" [alt]="product.name" class="result-image">
             <div class="result-info">
@@ -99,11 +97,11 @@
             </div>
           </div>
         </div>
-        
+
         <div class="no-results" *ngIf="showMobileNoResults && mobileSearchQuery.length > 0">
           <span>No products found</span>
         </div>
-        
+
         <div class="search-loading" *ngIf="isMobileSearching">
           <div class="loading-spinner-small"></div>
           <span>Searching...</span>

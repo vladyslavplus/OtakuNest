@@ -35,6 +35,11 @@ export class ProductFilters {
     hidePointerLabels: true
   };
 
+  setCategory(category: string): void {
+    this.filters.category = category;
+    this.emitFilters();
+  }
+
   emitFilters() {
     if (
       this.filters.minPrice !== undefined &&
@@ -64,32 +69,32 @@ export class ProductFilters {
   onRatingInput(event: Event, field: 'minRating' | 'maxRating') {
     const target = event.target as HTMLInputElement;
     let value = parseFloat(target.value);
-    
+
     if (isNaN(value)) {
       this.filters[field] = undefined;
       return;
     }
-    
+
     value = Math.max(0, Math.min(5, value));
     this.filters[field] = value;
     target.value = value.toString();
-    
+
     this.validateRating();
   }
 
   onDiscountInput(event: Event, field: 'minDiscount' | 'maxDiscount') {
     const target = event.target as HTMLInputElement;
     let value = parseFloat(target.value);
-    
+
     if (isNaN(value)) {
       this.filters[field] = undefined;
       return;
     }
-    
-    value = Math.max(0, Math.min(100, Math.floor(value))); 
+
+    value = Math.max(0, Math.min(100, Math.floor(value)));
     this.filters[field] = value;
     target.value = value.toString();
-    
+
     this.validateDiscount();
   }
 
