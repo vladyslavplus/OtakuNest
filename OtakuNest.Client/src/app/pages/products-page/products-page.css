@@ -100,7 +100,7 @@
     padding: 1rem 2rem 2rem 2rem;
     max-width: 1200px;
     margin: 0 auto;
-    min-height: calc(100vh - 400px); 
+    min-height: calc(100vh - 400px);
 }
 
 .sidebar {
@@ -118,7 +118,8 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 1.5rem;
-    align-items: stretch;
+    align-items: start;
+    align-content: start;
     flex-grow: 1;
 }
 
@@ -210,7 +211,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    margin-top: auto; 
+    margin-top: auto;
     padding: 2rem 0;
     flex-shrink: 0;
 }
