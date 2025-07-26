@@ -10,7 +10,45 @@
     </ng-template>
   </div>
   <div class="product-info">
-    <h3 class="product-title">{{ product.name }}</h3>
-    <p class="product-price">${{ product.price }}</p>
+    <div class="product-content">
+      <h3 class="product-title">{{ product.name }}</h3>
+      <p class="product-price">${{ product.price }}</p>
+    </div>
+    
+    <div class="product-actions">
+      <button
+        *ngIf="cartQuantity === 0"
+        class="add-to-cart-btn"
+        (click)="addToCart()"
+        [disabled]="isLoading">
+        <span *ngIf="!isLoading">+</span>
+        <span *ngIf="isLoading" class="loading-spinner">⟳</span>
+      </button>
+     
+      <div *ngIf="cartQuantity > 0" class="quantity-controller">
+        <button
+          class="quantity-btn decrease"
+          (click)="removeFromCart()"
+          [disabled]="isLoading"
+          title="Decrease quantity">
+          −
+        </button>
+        <span class="quantity-display">{{ cartQuantity }}</span>
+        <button
+          class="quantity-btn increase"
+          (click)="addToCart()"
+          [disabled]="isLoading"
+          title="Increase quantity">
+          +
+        </button>
+        <button
+          class="quantity-btn remove-all"
+          (click)="removeCompletelyFromCart()"
+          [disabled]="isLoading"
+          title="Clear all">
+          🗑️
+        </button>
+      </div>
+    </div>
   </div>
 </div>

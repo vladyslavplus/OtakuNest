@@ -45,7 +45,6 @@
     color: #4f46e5;
 }
 
-/* Sort Container Styles */
 .sort-container {
     display: flex;
     align-items: center;
@@ -101,6 +100,7 @@
     padding: 1rem 2rem 2rem 2rem;
     max-width: 1200px;
     margin: 0 auto;
+    min-height: calc(100vh - 400px); 
 }
 
 .sidebar {
@@ -109,7 +109,9 @@
 
 .product-listing {
     flex: 1;
-    min-height: 400px;
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
 }
 
 .products-grid {
@@ -117,6 +119,7 @@
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 1.5rem;
     align-items: stretch;
+    flex-grow: 1;
 }
 
 .loading-container {
@@ -126,6 +129,8 @@
     justify-content: center;
     padding: 4rem 2rem;
     text-align: center;
+    flex-grow: 1;
+    min-height: 500px;
 }
 
 .loading-spinner {
@@ -162,6 +167,8 @@
     justify-content: center;
     padding: 4rem 2rem;
     text-align: center;
+    flex-grow: 1;
+    min-height: 500px;
 }
 
 .error-text {
@@ -181,6 +188,8 @@
     background: #f8fafc;
     border-radius: 12px;
     border: 2px dashed #e2e8f0;
+    flex-grow: 1;
+    min-height: 400px;
 }
 
 .no-products-text {
@@ -196,71 +205,14 @@
     margin: 0;
 }
 
-@media (max-width: 768px) {
-    .breadcrumb-sort-container {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1rem;
-        padding: 0 1rem;
-    }
-
-    .breadcrumb {
-        justify-content: center;
-    }
-
-    .sort-container {
-        min-width: auto;
-        width: auto;
-        justify-content: flex-end;
-    }
-
-    .sort-container select {
-        min-width: 140px;
-    }
-
-    .products-layout {
-        flex-direction: column;
-        padding: 1rem;
-    }
-
-    .sidebar {
-        flex: none;
-    }
-
-    .page-title {
-        font-size: 2rem;
-    }
-
-    .products-grid {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    }
-}
-
-@media (max-width: 480px) {
-    .breadcrumb-sort-container {
-        padding: 0 0.75rem;
-    }
-
-    .sort-container {
-        gap: 0.5rem;
-    }
-
-    .sort-container select {
-        padding: 0.375rem 0.5rem;
-        padding-right: 1.75rem;
-        background-size: 0.875rem;
-        background-position: right 0.375rem center;
-        min-width: 120px;
-    }
-}
-
 .pagination-container {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    margin-top: 3rem;
+    margin-top: auto; 
     padding: 2rem 0;
+    flex-shrink: 0;
 }
 
 .pagination-arrow {
@@ -353,6 +305,58 @@
 }
 
 @media (max-width: 768px) {
+    .breadcrumb-sort-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        padding: 0 1rem;
+    }
+
+    .breadcrumb {
+        justify-content: center;
+    }
+
+    .sort-container {
+        min-width: auto;
+        width: auto;
+        justify-content: flex-end;
+    }
+
+    .sort-container select {
+        min-width: 140px;
+    }
+
+    .products-layout {
+        flex-direction: column;
+        padding: 1rem;
+        min-height: calc(100vh - 350px);
+    }
+
+    .sidebar {
+        flex: none;
+    }
+
+    .page-title {
+        font-size: 2rem;
+    }
+
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+
+    .product-listing {
+        min-height: 500px;
+    }
+
+    .loading-container,
+    .error-container {
+        min-height: 400px;
+    }
+
+    .no-products-container {
+        min-height: 300px;
+    }
+
     .pagination-container {
         gap: 0.25rem;
         margin-top: 2rem;
@@ -368,5 +372,37 @@
     .pagination-numbers {
         gap: 0.25rem;
         margin: 0 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .breadcrumb-sort-container {
+        padding: 0 0.75rem;
+    }
+
+    .sort-container {
+        gap: 0.5rem;
+    }
+
+    .sort-container select {
+        padding: 0.375rem 0.5rem;
+        padding-right: 1.75rem;
+        background-size: 0.875rem;
+        background-position: right 0.375rem center;
+        min-width: 120px;
+    }
+
+    .products-layout {
+        min-height: calc(100vh - 300px);
+    }
+
+    .product-listing {
+        min-height: 400px;
+    }
+
+    .loading-container,
+    .error-container,
+    .no-products-container {
+        min-height: 300px;
     }
 }

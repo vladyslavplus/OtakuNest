@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, Injector } from '@angular/core';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { AuthResponse } from '../../../core/auth/AuthResponse.model';
 import { DecodedToken } from '../../../core/auth/DecodedToken.model';
 import { jwtDecode } from 'jwt-decode';
+import { CartService } from '../../cart/services/cart.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,13 +16,18 @@ export class AuthService {
   private authStatus = new BehaviorSubject<boolean>(this.hasValidToken());
   authStatus$ = this.authStatus.asObservable();
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private injector: Injector) {}
+
+  private get cartService(): CartService {
+    return this.injector.get(CartService);
+  }  
 
   register(data: { userName: string; email: string; password: string }): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.baseUrl}/register`, data).pipe(
       tap(res => {
         if (res?.accessToken) {
           this.handleAuth(res.accessToken);
+          this.cartService.handleLoginSyncWithBackend(); 
         }
       })
     );
@@ -32,6 +38,7 @@ export class AuthService {
       tap(res => {
         if (res?.accessToken) {
           this.handleAuth(res.accessToken);
+          this.cartService.handleLoginSyncWithBackend(); 
         }
       })
     );
@@ -51,7 +58,10 @@ export class AuthService {
 
   logout(): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/logout`, {}, { withCredentials: true }).pipe(
-      tap(() => this.clearAuth())
+      tap(() => {
+        this.clearAuth();
+        this.cartService.clearCart();
+      })
     );
   }
 

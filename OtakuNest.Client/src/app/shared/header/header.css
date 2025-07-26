@@ -59,6 +59,7 @@
 
 .nav-menu a:hover {
     color: #6366f1;
+    cursor: pointer;
 }
 
 .nav-menu a:hover::after {
