@@ -1,0 +1,123 @@
+<div class="account-container">
+  <div *ngIf="isLoading" class="loading">
+    <p>Loading...</p>
+  </div>
+  <div *ngIf="error && !isLoading && !user" class="error">
+    <p>{{ error }}</p>
+  </div>
+  <div *ngIf="user && !isLoading">
+    <!-- Logout Button - Right Top Corner -->
+    <div class="logout-container">
+      <button 
+        class="logout-btn"
+        [class.loading]="isLoggingOut"
+        [disabled]="isLoggingOut"
+        (click)="onLogout()"
+        title="Sign out of your account">
+        <span class="logout-icon" *ngIf="!isLoggingOut">👋</span>
+        <span class="logout-text">{{ isLoggingOut ? 'Signing out...' : 'Logout' }}</span>
+      </button>
+    </div>
+
+    <div class="account-nav">
+      <div class="nav-tabs">
+        <button 
+          class="nav-tab" 
+          [class.active]="activeTab === 'account'"
+          (click)="switchTab('account')">
+          Account
+        </button>
+        <button 
+          class="nav-tab" 
+          [class.active]="activeTab === 'history'"
+          (click)="switchTab('history')">
+          History
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'account'">
+      <h2>Your Account</h2>
+      
+      <div *ngIf="error" class="error">
+        <p>{{ error }}</p>
+      </div>
+      <div *ngIf="successMessage" class="success">
+        <p>{{ successMessage }}</p>
+      </div>
+     
+      <div class="user-info">
+        <p><strong>Username:</strong> {{ user.userName }}</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Phone:</strong> {{ user.phoneNumber || '—' }}</p>
+        <p><strong>Created:</strong> {{ user.createdAt | date }}</p>
+      </div>
+
+      <form (ngSubmit)="onSubmit()" class="update-form">
+        <h3>Update Information</h3>
+       
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input
+            id="email"
+            type="email"
+            [(ngModel)]="updateData.email"
+            name="email"
+            placeholder="Enter new email"
+            [disabled]="isUpdating"
+          />
+        </div>
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input
+            id="password"
+            type="password"
+            [(ngModel)]="updateData.password"
+            name="password"
+            placeholder="Enter new password"
+            [disabled]="isUpdating"
+          />
+        </div>
+        <div class="form-group">
+          <label for="phoneNumber">Phone Number:</label>
+          <input
+            id="phoneNumber"
+            type="text"
+            [(ngModel)]="updateData.phoneNumber"
+            name="phoneNumber"
+            placeholder="Enter new phone number"
+            [disabled]="isUpdating"
+          />
+        </div>
+        <div class="form-group">
+          <label for="userName">Username:</label>
+          <input
+            id="userName"
+            type="text"
+            [(ngModel)]="updateData.userName"
+            name="userName"
+            placeholder="Enter new username"
+            [disabled]="isUpdating"
+          />
+        </div>
+        
+        <button 
+          type="submit" 
+          class="update-btn"
+          [class.loading]="isUpdating"
+          [disabled]="isUpdating">
+          {{ isUpdating ? 'Updating...' : 'Update Profile' }}
+        </button>
+      </form>
+    </div>
+
+    <div *ngIf="activeTab === 'history'" class="history-content">
+      <h2>Order History</h2>
+      <div class="coming-soon">
+        <div class="coming-soon-icon">📦</div>
+        <h3>Order History Coming Soon</h3>
+        <p>We're working on bringing you a comprehensive order history feature.</p>
+      </div>
+    </div>
+  </div>
+</div>

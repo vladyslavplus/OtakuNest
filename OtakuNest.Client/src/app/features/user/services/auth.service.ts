@@ -65,6 +65,15 @@ export class AuthService {
     );
   }
 
+  logoutLocal(): void {
+    this.clearAuth();
+    this.cartService.clearCart();
+  }
+
+  clearTokens(): void {
+    this.clearAuth();
+  }
+
   private handleAuth(token: string): void {
     if (!token) {
       console.warn('AuthService: Attempting to handle auth with empty token');
@@ -93,6 +102,10 @@ export class AuthService {
     return this.hasValidToken();
   }
 
+  isLoggedIn(): boolean {
+    return this.isAuthenticated();
+  }
+
   getAccessToken(): string | null {
     try {
       return localStorage.getItem(this.TOKEN_KEY);
@@ -102,27 +115,34 @@ export class AuthService {
     }
   }
 
-  getUserInfo(): DecodedToken | null {
+  getToken(): string | null {
+    return this.getAccessToken();
+  }
+
+  getUserInfo(): DecodedToken & { userId?: string } | null {
     const token = this.getAccessToken();
     if (!token) return null;
-
+  
     try {
-      const decoded = jwtDecode<DecodedToken>(token);
-
+      const decoded: DecodedToken = jwtDecode(token);
       const now = Date.now() / 1000;
       if (decoded.exp <= now) {
         this.clearAuth();
         return null;
       }
-
-      return decoded;
+  
+      const userId =
+        decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+        decoded.sub;
+  
+      return { ...decoded, userId };
     } catch (error) {
       console.error('AuthService: Failed to decode token', error);
       this.clearAuth();
       return null;
     }
   }
-
+  
   private hasValidToken(): boolean {
     const token = this.getAccessToken();
     if (!token) return false;
