@@ -1,11 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, catchError, map, Observable, of, tap } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, tap, throwError } from 'rxjs';
 import { AuthService } from '../../user/services/auth.service';
 import { CartDto } from '../models/CartDto.model';
 import { CartItemDto } from '../models/CartItemDto.model';
 import { AddCartItemDto } from '../models/AddCartItemDto.model';
 import { UpdateCartItemQuantityDto } from '../models/UpdateCartItemQuantityDto.model';
+import { ProductService } from '../../product/services/product.service';
 
 @Injectable({
   providedIn: 'root'
@@ -17,7 +18,11 @@ export class CartService {
   private cartItemsSubject = new BehaviorSubject<CartItemDto[]>([]);
   cartItems$ = this.cartItemsSubject.asObservable();
 
-  constructor(private http: HttpClient, private authService: AuthService) {
+  constructor(
+    private http: HttpClient, 
+    private authService: AuthService,
+    private productService: ProductService
+  ) {
     this.initializeCart();
   }
 
@@ -75,24 +80,60 @@ export class CartService {
     }
   }
 
+  private async checkProductAvailability(productId: string, requestedQuantity: number): Promise<boolean> {
+    try {
+      const product = await this.productService.getProductById(productId).toPromise();
+      if (!product || !product.isAvailable) {
+        throw new Error('Product is not available');
+      }
+      
+      const currentCartItem = this.cartItemsSubject.value.find(item => item.productId === productId);
+      const currentQuantityInCart = currentCartItem ? currentCartItem.quantity : 0;
+      const totalQuantity = currentQuantityInCart + requestedQuantity;
+      
+      if (totalQuantity > product.quantity) {
+        throw new Error(`Only ${product.quantity} units available. You already have ${currentQuantityInCart} in cart.`);
+      }
+      
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   addItemToCart(productId: string, quantity: number = 1): Observable<any> {
     const dto: AddCartItemDto = { productId, quantity };
 
     if (this.authService.isAuthenticated()) {
       return this.http.post(this.baseUrl, dto, this.getHeaders()).pipe(
-        tap(() => this.refreshCart())
+        tap(() => this.refreshCart()),
+        catchError(error => {
+          if (error.status === 400 && error.error?.message) {
+            return throwError(() => new Error(error.error.message));
+          }
+          return throwError(() => error);
+        })
       );
     } else {
-      const current = [...this.cartItemsSubject.value];
-      const existing = current.find(i => i.productId === productId);
-      if (existing) {
-        existing.quantity += quantity;
-      } else {
-        current.push({ productId, quantity });
-      }
-      this.cartItemsSubject.next(current);
-      this.saveToLocalStorage();
-      return of(null);
+      return new Observable(observer => {
+        this.checkProductAvailability(productId, quantity)
+          .then(() => {
+            const current = [...this.cartItemsSubject.value];
+            const existing = current.find(i => i.productId === productId);
+            if (existing) {
+              existing.quantity += quantity;
+            } else {
+              current.push({ productId, quantity });
+            }
+            this.cartItemsSubject.next(current);
+            this.saveToLocalStorage();
+            observer.next(null);
+            observer.complete();
+          })
+          .catch(error => {
+            observer.error(error);
+          });
+      });
     }
   }
 
@@ -114,20 +155,46 @@ export class CartService {
 
     if (this.authService.isAuthenticated()) {
       return this.http.patch(`${this.baseUrl}/quantity`, dto, this.getHeaders()).pipe(
-        tap(() => this.refreshCart())
+        tap(() => this.refreshCart()),
+        catchError(error => {
+          if (error.status === 400 && error.error?.message) {
+            return throwError(() => new Error(error.error.message));
+          }
+          return throwError(() => error);
+        })
       );
     } else {
-      const current = [...this.cartItemsSubject.value];
-      const index = current.findIndex(i => i.productId === productId);
-      if (index >= 0) {
-        current[index].quantity += delta;
-        if (current[index].quantity <= 0) {
-          current.splice(index, 1);
+      if (delta > 0) {
+        return new Observable(observer => {
+          this.checkProductAvailability(productId, delta)
+            .then(() => {
+              const current = [...this.cartItemsSubject.value];
+              const index = current.findIndex(i => i.productId === productId);
+              if (index >= 0) {
+                current[index].quantity += delta;
+                this.cartItemsSubject.next(current);
+                this.saveToLocalStorage();
+              }
+              observer.next(null);
+              observer.complete();
+            })
+            .catch(error => {
+              observer.error(error);
+            });
+        });
+      } else {
+        const current = [...this.cartItemsSubject.value];
+        const index = current.findIndex(i => i.productId === productId);
+        if (index >= 0) {
+          current[index].quantity += delta;
+          if (current[index].quantity <= 0) {
+            current.splice(index, 1);
+          }
+          this.cartItemsSubject.next(current);
+          this.saveToLocalStorage();
         }
-        this.cartItemsSubject.next(current);
-        this.saveToLocalStorage();
+        return of(null);
       }
-      return of(null);
     }
   }
 

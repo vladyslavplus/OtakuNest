@@ -2,10 +2,11 @@ import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Product } from '../../features/product/models/product.model';
-import { catchError, debounceTime, distinctUntilChanged, of, Subject, switchMap, takeUntil } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, map, Observable, of, startWith, Subject, switchMap, takeUntil } from 'rxjs';
 import { ProductService } from '../../features/product/services/product.service';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../features/user/services/auth.service';
+import { CartService } from '../../features/cart/services/cart.service';
 
 @Component({
   selector: 'app-header',
@@ -44,16 +45,25 @@ export class Header implements OnInit, OnDestroy {
   private readonly MOBILE_BREAKPOINT = 640;
   private readonly SEARCH_BLUR_DELAY = 200;
 
+
+  cartItemCount$!: Observable<number>;
+
   constructor(
     private readonly router: Router,
     private readonly productService: ProductService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly cartService: CartService
   ) {}
 
   ngOnInit(): void {
     this.checkScreenSize();
     this.initializeAuthSubscription();
     this.initializeSearchSubscriptions();
+
+    this.cartItemCount$ = this.cartService.cartItems$.pipe(
+      map(items => items.reduce((total, item) => total + item.quantity, 0)),
+      startWith(0) 
+    );
   }
 
   ngOnDestroy(): void {
@@ -179,8 +189,7 @@ export class Header implements OnInit, OnDestroy {
   }
 
   toggleCart(): void {
-    // TODO: Implement cart functionality
-    console.log('Cart toggled');
+    this.router.navigate(['/cart']);
   }
 
   toggleMobileMenu(): void {

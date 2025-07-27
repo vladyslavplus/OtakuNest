@@ -45,7 +45,9 @@
 
       <div class="cart-container" (click)="toggleCart()">
         <div class="cart-icon">🛒</div>
-        <div class="cart-count" id="cartCount">3</div>
+        <div class="cart-count">
+          {{ cartItemCount$ | async }}
+        </div>
       </div>
 
       <div class="account-container">
