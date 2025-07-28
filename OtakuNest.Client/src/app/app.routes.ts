@@ -4,6 +4,7 @@ import { ProductsPage } from './pages/products-page/products-page';
 import { AuthPage } from './pages/auth-page/auth-page';
 import { AccountPage } from './pages/account-page/account-page';
 import { CartPage } from './pages/cart-page/cart-page';
+import { ProductDetailPage } from './pages/product-detail-page/product-detail-page';
 
 export const routes: Routes = [
     {
@@ -14,6 +15,10 @@ export const routes: Routes = [
         path: 'products',
         component: ProductsPage 
     }, 
+    {
+        path: 'products/:id',
+        component: ProductDetailPage
+    },
     {
         path: 'cart',
         component: CartPage

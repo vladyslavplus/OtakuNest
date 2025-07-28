@@ -1,7 +1,9 @@
 <div class="product-card" [attr.data-category]="product.category">
   <div class="product-image">
     <ng-container *ngIf="product.imageUrl; else noImage">
-      <img [src]="product.imageUrl" [alt]="product.name" />
+      <a [routerLink]="['/products', product.id]">
+        <img [src]="product.imageUrl" [alt]="product.name" />
+      </a>
     </ng-container>
     <ng-template #noImage>
       <div class="no-image-placeholder">
@@ -11,40 +13,30 @@
   </div>
   <div class="product-info">
     <div class="product-content">
-      <h3 class="product-title">{{ product.name }}</h3>
+      <h3 class="product-title">
+        <a [routerLink]="['/products', product.id]">
+          {{ product.name }}
+        </a>
+      </h3>
       <p class="product-price">${{ product.price }}</p>
     </div>
-    
+
     <div class="product-actions">
-      <button
-        *ngIf="cartQuantity === 0"
-        class="add-to-cart-btn"
-        (click)="addToCart()"
-        [disabled]="isLoading">
+      <button *ngIf="cartQuantity === 0" class="add-to-cart-btn" (click)="addToCart()" [disabled]="isLoading">
         <span *ngIf="!isLoading">+</span>
         <span *ngIf="isLoading" class="loading-spinner">⟳</span>
       </button>
-     
+
       <div *ngIf="cartQuantity > 0" class="quantity-controller">
-        <button
-          class="quantity-btn decrease"
-          (click)="removeFromCart()"
-          [disabled]="isLoading"
+        <button class="quantity-btn decrease" (click)="removeFromCart()" [disabled]="isLoading"
           title="Decrease quantity">
           −
         </button>
         <span class="quantity-display">{{ cartQuantity }}</span>
-        <button
-          class="quantity-btn increase"
-          (click)="addToCart()"
-          [disabled]="isLoading"
-          title="Increase quantity">
+        <button class="quantity-btn increase" (click)="addToCart()" [disabled]="isLoading" title="Increase quantity">
           +
         </button>
-        <button
-          class="quantity-btn remove-all"
-          (click)="removeCompletelyFromCart()"
-          [disabled]="isLoading"
+        <button class="quantity-btn remove-all" (click)="removeCompletelyFromCart()" [disabled]="isLoading"
           title="Clear all">
           🗑️
         </button>

@@ -3,11 +3,12 @@ import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { Product } from '../../../features/product/models/product.model';
 import { CartService } from '../../../features/cart/services/cart.service';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-product-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './product-card.html',
   styleUrl: './product-card.css'
 })

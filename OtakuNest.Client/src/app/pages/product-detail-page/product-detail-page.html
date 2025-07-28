@@ -1,0 +1,108 @@
+<div class="product-detail-container">
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="loading-spinner">⏳</div>
+    <p>Loading product...</p>
+  </div>
+  
+  <div *ngIf="error && !isLoading" class="error-container">
+    <div class="error-icon">❌</div>
+    <p>{{ error }}</p>
+    <button class="retry-btn" (click)="clearError()">Try Again</button>
+  </div>
+  
+  <div *ngIf="product && !isLoading" class="product-detail">
+    <div class="product-images">
+      <div class="main-image">
+        <img
+          [src]="product.imageUrl"
+          [alt]="product.name"
+          (error)="onImageError($event)"
+          class="product-image"
+        />
+        <div class="no-image-placeholder" style="display: none;">
+          <div class="placeholder-icon">📦</div>
+          <span>No Image</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="product-info">
+      <div class="product-header">
+        <h1 class="product-title">{{ product.name }}</h1>
+        <div class="product-meta">
+          <span class="product-sku">SKU: {{ product.sku }}</span>
+          <div class="product-rating">
+            <span class="rating-stars">⭐</span>
+            <span class="rating-value">{{ product.rating }}/5</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="product-pricing">
+        <div class="price-container">
+          <div class="price-section">
+            <span class="current-price">${{ product.price }}</span>
+            <span *ngIf="product.discount > 0" class="original-price">
+              ${{ getOriginalPrice() }}
+            </span>
+          </div>
+          <span *ngIf="product.discount > 0" class="discount-badge">
+            -{{ product.discount }}% OFF
+          </span>
+        </div>
+       
+        <div class="stock-info">
+          <span class="stock-status" [ngClass]="getStockStatusClass()">
+            {{ getStockMessage() }}
+          </span>
+        </div>
+      </div>
+      
+      <div class="product-description">
+        <h3>Description</h3>
+        <p>{{ product.description }}</p>
+      </div>
+      
+      <div class="product-details">
+        <div class="detail-item">
+          <span class="detail-label">Category:</span>
+          <span class="detail-value">{{ product.category }}</span>
+        </div>
+      </div>
+      
+      <div class="product-actions">
+        <!-- Error Message -->
+        <div *ngIf="error" class="error-message" (click)="clearError()">
+          ❌ {{ error }}
+        </div>
+        
+        <button
+          class="add-to-cart-btn"
+          [disabled]="!canAddToCart()"
+          (click)="addToCart()"
+        >
+          🛒 Add to Cart
+        </button>
+        
+        <div class="action-buttons">
+          <button class="wishlist-btn" disabled>
+            ❤️ Add to Wishlist
+          </button>
+          <button class="share-btn" disabled>
+            📤 Share
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div *ngIf="addToCartSuccess" 
+       class="success-toast" 
+       [class.toast-enter]="!isToastExiting"
+       [class.toast-exit]="isToastExiting">
+    <div class="toast-content">
+      <span class="toast-icon">✅</span>
+      <span class="toast-text">Added to cart!</span>
+    </div>
+  </div>
+</div>
