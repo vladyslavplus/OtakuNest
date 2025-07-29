@@ -1,12 +1,13 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CartService } from '../../features/cart/services/cart.service';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { DetailedCartItem } from '../../features/cart/models/DetailedCartItem.model';
 import { ProductService } from '../../features/product/services/product.service';
 import { CartItemDto } from '../../features/cart/models/CartItemDto.model';
 import { Subject, forkJoin, takeUntil, catchError, debounceTime } from 'rxjs';
 import { of } from 'rxjs';
+import { AuthService } from '../../features/user/services/auth.service';
 
 @Component({
   selector: 'app-cart-page',
@@ -26,8 +27,10 @@ export class CartPage implements OnInit, OnDestroy {
 
   constructor(
     private cartService: CartService,
-    private productService: ProductService
-  ) { }
+    private productService: ProductService,
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
     this.cartService.cartItems$
@@ -43,6 +46,39 @@ export class CartPage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  goToOrderPage(): void {
+    if (this.detailedCartItems.length === 0) {
+      this.error = 'Your cart is empty';
+      return;
+    }
+
+    if (!this.authService.isAuthenticated()) {
+      this.error = 'Please log in to place an order';
+      setTimeout(() => {
+        this.router.navigate(['/auth']);
+      }, 1500);
+      return;
+    }
+
+    const unavailableItems = this.detailedCartItems.filter(item => !item.isAvailable);
+    if (unavailableItems.length > 0) {
+      this.error = `Some items are no longer available: ${unavailableItems.map(item => item.productName).join(', ')}`;
+      return;
+    }
+
+    const insufficientStockItems = this.detailedCartItems.filter(item => 
+      item.quantity > item.availableQuantity
+    );
+    if (insufficientStockItems.length > 0) {
+      this.error = `Insufficient stock for: ${insufficientStockItems.map(item => 
+        `${item.productName} (requested: ${item.quantity}, available: ${item.availableQuantity})`
+      ).join(', ')}`;
+      return;
+    }
+
+    this.router.navigate(['/order']);
   }
 
   private loadProductDetails(cartItems: CartItemDto[]): void {

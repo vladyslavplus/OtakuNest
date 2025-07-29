@@ -135,12 +135,12 @@
                     <span>{{ totalPrice | currency }}</span>
                 </div>
 
-                <button class="checkout-btn">
+                <button class="checkout-btn" (click)="goToOrderPage()">
                     <svg class="checkout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M9 12l2 2 4-4" />
+                      <path d="M9 12l2 2 4-4" />
                     </svg>
                     Proceed to Checkout
-                </button>
+                  </button>
 
                 <button class="continue-shopping-link" routerLink="/products">
                     Continue Shopping

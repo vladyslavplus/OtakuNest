@@ -5,6 +5,7 @@ import { AuthPage } from './pages/auth-page/auth-page';
 import { AccountPage } from './pages/account-page/account-page';
 import { CartPage } from './pages/cart-page/cart-page';
 import { ProductDetailPage } from './pages/product-detail-page/product-detail-page';
+import { OrderPage } from './pages/order-page/order-page';
 
 export const routes: Routes = [
     {
@@ -23,6 +24,10 @@ export const routes: Routes = [
         path: 'cart',
         component: CartPage
     }, 
+    {
+        path: 'order',
+        component: OrderPage
+    },
     {
         path: 'auth',
         component: AuthPage

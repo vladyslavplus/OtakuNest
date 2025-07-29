@@ -1,12 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, catchError, map, Observable, of, tap, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, forkJoin, map, Observable, of, tap, throwError } from 'rxjs';
 import { AuthService } from '../../user/services/auth.service';
 import { CartDto } from '../models/CartDto.model';
 import { CartItemDto } from '../models/CartItemDto.model';
 import { AddCartItemDto } from '../models/AddCartItemDto.model';
 import { UpdateCartItemQuantityDto } from '../models/UpdateCartItemQuantityDto.model';
 import { ProductService } from '../../product/services/product.service';
+import { DetailedCartItem } from '../models/DetailedCartItem.model';
 
 @Injectable({
   providedIn: 'root'
@@ -18,8 +19,21 @@ export class CartService {
   private cartItemsSubject = new BehaviorSubject<CartItemDto[]>([]);
   cartItems$ = this.cartItemsSubject.asObservable();
 
+  private detailedCartItemsSubject = new BehaviorSubject<DetailedCartItem[]>([]);
+  detailedCartItems$ = this.detailedCartItemsSubject.asObservable();
+
+  private orderItems: { productId: string; quantity: number; }[] = [];
+
+  setOrderItems(items: { productId: string; quantity: number; }[]): void {
+    this.orderItems = items;
+  }
+  
+  getOrderItems(): { productId: string; quantity: number; }[] {
+    return this.orderItems;
+  }
+
   constructor(
-    private http: HttpClient, 
+    private http: HttpClient,
     private authService: AuthService,
     private productService: ProductService
   ) {
@@ -43,13 +57,18 @@ export class CartService {
 
   private loadCartFromBackend(): Observable<CartDto> {
     return this.http.get<CartDto>(this.baseUrl, this.getHeaders()).pipe(
-      tap(cart => this.cartItemsSubject.next(cart.items)),
+      tap(cart => {
+        this.cartItemsSubject.next(cart.items);
+        this.loadDetailedCartItems(cart.items);
+      }),
       catchError(() => {
         this.cartItemsSubject.next([]);
+        this.detailedCartItemsSubject.next([]);
         return of({ items: [] } as CartDto);
       })
     );
   }
+
 
   private loadCartFromLocalStorage() {
     try {
@@ -57,12 +76,44 @@ export class CartService {
       if (raw) {
         const parsed: CartItemDto[] = JSON.parse(raw);
         this.cartItemsSubject.next(parsed);
+        this.loadDetailedCartItems(parsed);
       }
     } catch (e) {
       console.error('Failed to load local cart', e);
       this.cartItemsSubject.next([]);
+      this.detailedCartItemsSubject.next([]);
     }
   }
+
+  private loadDetailedCartItems(cartItems: CartItemDto[]): void {
+    if (!cartItems || cartItems.length === 0) {
+      this.detailedCartItemsSubject.next([]);
+      return;
+    }
+  
+    const requests = cartItems.map(item =>
+      this.productService.getProductById(item.productId).pipe(
+        map(product => {
+          return {
+            productId: item.productId,
+            quantity: item.quantity,
+            productName: product.name,
+            unitPrice: product.price,
+            imageUrl: product.imageUrl,
+            availableQuantity: product.quantity,
+            isAvailable: product.isAvailable
+          } as DetailedCartItem;
+        }),
+        catchError(() => of(null))
+      )
+    );
+  
+    forkJoin(requests).subscribe(items => {
+      const detailedItems = items.filter(Boolean) as DetailedCartItem[];
+      this.detailedCartItemsSubject.next(detailedItems);
+    });
+  }
+  
 
   private saveToLocalStorage() {
     localStorage.setItem(this.LOCAL_KEY, JSON.stringify(this.cartItemsSubject.value));
@@ -86,15 +137,15 @@ export class CartService {
       if (!product || !product.isAvailable) {
         throw new Error('Product is not available');
       }
-      
+
       const currentCartItem = this.cartItemsSubject.value.find(item => item.productId === productId);
       const currentQuantityInCart = currentCartItem ? currentCartItem.quantity : 0;
       const totalQuantity = currentQuantityInCart + requestedQuantity;
-      
+
       if (totalQuantity > product.quantity) {
         throw new Error(`Only ${product.quantity} units available. You already have ${currentQuantityInCart} in cart.`);
       }
-      
+
       return true;
     } catch (error) {
       throw error;
@@ -127,6 +178,7 @@ export class CartService {
             }
             this.cartItemsSubject.next(current);
             this.saveToLocalStorage();
+            this.loadDetailedCartItems(current);
             observer.next(null);
             observer.complete();
           })
@@ -146,6 +198,7 @@ export class CartService {
       const updated = this.cartItemsSubject.value.filter(i => i.productId !== productId);
       this.cartItemsSubject.next(updated);
       this.saveToLocalStorage();
+      this.loadDetailedCartItems(updated);
       return of(null);
     }
   }
@@ -174,6 +227,7 @@ export class CartService {
                 current[index].quantity += delta;
                 this.cartItemsSubject.next(current);
                 this.saveToLocalStorage();
+                this.loadDetailedCartItems(current);
               }
               observer.next(null);
               observer.complete();
@@ -192,6 +246,7 @@ export class CartService {
           }
           this.cartItemsSubject.next(current);
           this.saveToLocalStorage();
+          this.loadDetailedCartItems(current);
         }
         return of(null);
       }
@@ -205,6 +260,7 @@ export class CartService {
       );
     } else {
       this.cartItemsSubject.next([]);
+      this.detailedCartItemsSubject.next([]);
       this.clearLocalStorage();
       return of(null);
     }
