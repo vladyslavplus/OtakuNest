@@ -40,7 +40,7 @@
                     {
                         error = "Too Many Requests",
                         message = "Rate limit exceeded. Please try again later.",
-                        retryAfter = 60
+                        retryAfter = 30
                     });
 
                     await context.Response.WriteAsync(responseBody);
