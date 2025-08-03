@@ -1,5 +1,6 @@
 using AspNetCoreRateLimit;
 using OtakuNest.Common.Extensions;
+using OtakuNest.Gateway.Configurations;
 using OtakuNest.Gateway.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,18 +13,17 @@ builder.Services.AddCors(options =>
             .WithOrigins("http://localhost:4200")
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();  
+            .AllowCredentials();
     });
 });
 
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.AddInMemoryRateLimiting();
-builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+builder.Services.AddSingleton<IRateLimitConfiguration, CustomRateLimitConfiguration>();
 
 builder.Services.AddJwtBearerAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerWithJwt();
 
@@ -40,10 +40,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseCors();
+
 app.UseIpRateLimiting();
 
-app.UseCors();
+app.UseMiddleware<RateLimitCorsMiddleware>();
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

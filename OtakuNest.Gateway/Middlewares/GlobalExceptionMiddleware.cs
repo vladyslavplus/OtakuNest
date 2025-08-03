@@ -20,18 +20,33 @@
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unhandled exception");
-
-                context.Response.StatusCode = 500;
-                context.Response.ContentType = "application/json";
-
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    status = 500,
-                    message = "Something went wrong",
-                    detail = ex.Message // DEV
-                });
+                await HandleExceptionAsync(context, ex);
             }
         }
-    }
 
+        private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+        {
+            if (context.Response.HasStarted)
+            {
+                _logger.LogWarning("Response has already started, cannot handle exception");
+                return;
+            }
+
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+
+            if (!context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
+            {
+                context.Response.Headers.Append("Access-Control-Allow-Origin", "http://localhost:4200");
+                context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+            }
+
+            await context.Response.WriteAsJsonAsync(new
+            {
+                status = 500,
+                message = "Something went wrong",
+                detail = exception.Message // Remove in prod
+            });
+        }
+    }
 }
