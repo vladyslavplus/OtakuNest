@@ -278,6 +278,58 @@
     margin-top: auto;
 }
 
+.rate-limit-warning {
+    padding: 1rem;
+    border-radius: 12px;
+    font-weight: 600;
+    text-align: center;
+    animation: slideIn 0.3s ease-out;
+    background: rgba(251, 191, 36, 0.1);
+    color: #d97706;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    cursor: pointer;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.rate-limit-warning:hover {
+    background: rgba(251, 191, 36, 0.15);
+    transform: translateY(-1px);
+}
+
+.rate-limit-warning small {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.rate-limit-block {
+    padding: 1rem;
+    border-radius: 12px;
+    font-weight: 600;
+    text-align: center;
+    animation: slideIn 0.3s ease-out;
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    margin-bottom: 1rem;
+}
+
+.rate-limit-info {
+    background: rgba(248, 250, 252, 0.8);
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+.rate-limit-info small {
+    color: #64748b;
+    font-size: 0.8rem;
+}
+
 .error-message {
     padding: 1rem;
     border-radius: 12px;
@@ -349,6 +401,10 @@
     box-shadow: 0 8px 30px rgba(99, 102, 241, 0.3);
     position: relative;
     overflow: hidden;
+    min-height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .add-to-cart-btn::before {
@@ -376,6 +432,7 @@
     cursor: not-allowed;
     transform: none;
     box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+    background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
 }
 
 .action-buttons {
@@ -407,6 +464,8 @@
 .share-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    background: rgba(229, 231, 235, 0.8);
+    color: #9ca3af;
 }
 
 @keyframes spin {
@@ -486,6 +545,20 @@
 
     .action-buttons {
         flex-direction: column;
+    }
+
+    .rate-limit-warning,
+    .rate-limit-block {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .rate-limit-info {
+        padding: 0.5rem;
+    }
+
+    .rate-limit-info small {
+        font-size: 0.75rem;
     }
 
     .product-meta {

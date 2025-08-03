@@ -5,9 +5,10 @@ import { Router, RouterModule } from '@angular/router';
 import { DetailedCartItem } from '../../features/cart/models/DetailedCartItem.model';
 import { ProductService } from '../../features/product/services/product.service';
 import { CartItemDto } from '../../features/cart/models/CartItemDto.model';
-import { Subject, forkJoin, takeUntil, catchError, debounceTime } from 'rxjs';
+import { Subject, forkJoin, takeUntil, catchError, debounceTime, Subscription } from 'rxjs';
 import { of } from 'rxjs';
 import { AuthService } from '../../features/user/services/auth.service';
+import { RateLimitService } from '../../core/limiting/services/rate-limit.service';
 
 @Component({
   selector: 'app-cart-page',
@@ -22,17 +23,26 @@ export class CartPage implements OnInit, OnDestroy {
   isLoading = false;
   error: string | null = null;
 
+  isRateLimited = false;
+  rateLimitWarning = false;
+  rateLimitTimeRemaining = 0;
+  rateLimitErrorMessage: string | null = null;
+
   pendingRequests = new Set<string>();
   private destroy$ = new Subject<void>();
+  private rateLimitSubscriptions: Subscription[] = [];
 
   constructor(
     private cartService: CartService,
     private productService: ProductService,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private rateLimitService: RateLimitService
   ) {}
 
   ngOnInit(): void {
+    this.subscribeToRateLimit();
+    
     this.cartService.cartItems$
       .pipe(
         takeUntil(this.destroy$),
@@ -46,6 +56,43 @@ export class CartPage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    
+    this.rateLimitSubscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  private subscribeToRateLimit(): void {
+    this.rateLimitSubscriptions.push(
+      this.rateLimitService.isRateLimited$.subscribe(isRateLimited => {
+        this.isRateLimited = isRateLimited;
+        console.log('CartPage - Rate limit status:', isRateLimited);
+      })
+    );
+
+    this.rateLimitSubscriptions.push(
+      this.rateLimitService.rateLimitWarning$.subscribe(rateLimitWarning => {
+        this.rateLimitWarning = rateLimitWarning;
+        console.log('CartPage - Rate limit warning:', rateLimitWarning);
+      })
+    );
+
+    this.rateLimitSubscriptions.push(
+      this.rateLimitService.rateLimitTimeRemaining$.subscribe(timeRemaining => {
+        this.rateLimitTimeRemaining = timeRemaining;
+      })
+    );
+
+    this.rateLimitSubscriptions.push(
+      this.rateLimitService.errorMessage$.subscribe(errorMessage => {
+        this.rateLimitErrorMessage = errorMessage;
+        if (errorMessage) {
+          this.error = errorMessage;
+        }
+      })
+    );
+  }
+
+  public formatTime(seconds: number): string {
+    return this.rateLimitService.formatTime(seconds);
   }
 
   goToOrderPage(): void {
@@ -92,7 +139,7 @@ export class CartPage implements OnInit, OnDestroy {
       this.isLoading = true;
     }
 
-    this.error = null;
+    this.clearRegularError(); 
 
     const existingProductIds = new Set(this.detailedCartItems.map(item => item.productId));
     const newCartItems = cartItems.filter(item => !existingProductIds.has(item.productId));
@@ -147,7 +194,7 @@ export class CartPage implements OnInit, OnDestroy {
           },
           error: (error) => {
             console.error('Error loading cart products:', error);
-            this.error = 'Failed to load cart items. Please try again later.';
+            this.setRegularError('Failed to load cart items. Please try again later.');
             this.isLoading = false;
           }
         });
@@ -167,6 +214,11 @@ export class CartPage implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.rateLimitService.canMakeRequest()) {
+      console.warn('Request blocked by rate limiter');
+      return;
+    }
+
     this.pendingRequests.add(`remove_${productId}`);
 
     this.cartService.removeItemFromCart(productId)
@@ -174,10 +226,11 @@ export class CartPage implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.pendingRequests.delete(`remove_${productId}`);
+          console.log('Item removed from cart!');
         },
         error: (error) => {
           console.error('Error removing item:', error);
-          this.error = 'Failed to remove item. Please try again later.';
+          this.setRegularError('Failed to remove item. Please try again later.');
           this.pendingRequests.delete(`remove_${productId}`);
         }
       });
@@ -189,20 +242,25 @@ export class CartPage implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.rateLimitService.canMakeRequest()) {
+      console.warn('Request blocked by rate limiter');
+      return;
+    }
+
     const item = this.detailedCartItems.find(i => i.productId === productId);
 
     if (!item) {
-      this.error = 'Item not found in cart.';
+      this.setRegularError('Item not found in cart.');
       return;
     }
 
     if (!item.isAvailable) {
-      this.error = `${item.productName} is currently unavailable.`;
+      this.setRegularError(`${item.productName} is currently unavailable.`);
       return;
     }
 
     if (item.quantity >= item.availableQuantity) {
-      this.error = `Sorry, only ${item.availableQuantity} units of ${item.productName} are available.`;
+      this.setRegularError(`Sorry, only ${item.availableQuantity} units of ${item.productName} are available.`);
       return;
     }
 
@@ -213,10 +271,11 @@ export class CartPage implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.pendingRequests.delete(requestKey);
+          console.log('Item quantity increased!');
         },
         error: (error) => {
           console.error('Error increasing quantity:', error);
-          this.error = 'Failed to update quantity. Please try again later.';
+          this.setRegularError('Failed to update quantity. Please try again later.');
           this.pendingRequests.delete(requestKey);
         }
       });
@@ -228,6 +287,11 @@ export class CartPage implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.rateLimitService.canMakeRequest()) {
+      console.warn('Request blocked by rate limiter');
+      return;
+    }
+
     this.pendingRequests.add(requestKey);
 
     this.cartService.changeItemQuantity(productId, -1)
@@ -235,17 +299,34 @@ export class CartPage implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.pendingRequests.delete(requestKey);
+          console.log('Item quantity decreased!');
         },
         error: (error) => {
           console.error('Error decreasing quantity:', error);
-          this.error = 'Failed to update quantity. Please try again later.';
+          this.setRegularError('Failed to update quantity. Please try again later.');
           this.pendingRequests.delete(requestKey);
         }
       });
   }
 
+  private setRegularError(message: string): void {
+    if (!this.rateLimitErrorMessage) {
+      this.error = message;
+    }
+  }
+
+  private clearRegularError(): void {
+    if (!this.rateLimitErrorMessage) {
+      this.error = null;
+    }
+  }
+
   clearError(): void {
-    this.error = null;
+    if (this.rateLimitErrorMessage) {
+      this.rateLimitService.clearError();
+    } else {
+      this.error = null;
+    }
   }
 
   trackByProductId(index: number, item: DetailedCartItem): string {
@@ -262,16 +343,25 @@ export class CartPage implements OnInit, OnDestroy {
 
   canIncreaseQuantity(item: DetailedCartItem): boolean {
     const isRequestPending = this.pendingRequests.has(`increase_${item.productId}`);
-    return !isRequestPending && item.isAvailable && item.quantity < item.availableQuantity;
+    return !isRequestPending && 
+           !this.isRateLimited && 
+           this.rateLimitService.canMakeRequest() && 
+           item.isAvailable && 
+           item.quantity < item.availableQuantity;
   }
 
   canDecreaseQuantity(item: DetailedCartItem): boolean {
     const isRequestPending = this.pendingRequests.has(`decrease_${item.productId}`);
-    return !isRequestPending && item.quantity > 1;
+    return !isRequestPending && 
+           !this.isRateLimited && 
+           this.rateLimitService.canMakeRequest() && 
+           item.quantity > 1;
   }
 
   canRemoveItem(productId: string): boolean {
-    return !this.pendingRequests.has(`remove_${productId}`);
+    return !this.pendingRequests.has(`remove_${productId}`) && 
+           !this.isRateLimited && 
+           this.rateLimitService.canMakeRequest();
   }
 
   getStockMessage(item: DetailedCartItem): string {
@@ -302,5 +392,17 @@ export class CartPage implements OnInit, OnDestroy {
     }
 
     return 'in-stock';
+  }
+
+  getRemainingRequests(): number {
+    return this.rateLimitService.getRemainingRequests();
+  }
+
+  clearRateLimitWarning(): void {
+    this.rateLimitService.clearWarning();
+  }
+
+  getCurrentRateLimitStatus(): any {
+    return this.rateLimitService.getCurrentStatus();
   }
 }

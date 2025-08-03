@@ -8,6 +8,7 @@ import { AddCartItemDto } from '../models/AddCartItemDto.model';
 import { UpdateCartItemQuantityDto } from '../models/UpdateCartItemQuantityDto.model';
 import { ProductService } from '../../product/services/product.service';
 import { DetailedCartItem } from '../models/DetailedCartItem.model';
+import { RateLimitService } from '../../../core/limiting/services/rate-limit.service';
 
 @Injectable({
   providedIn: 'root'
@@ -35,7 +36,8 @@ export class CartService {
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private productService: ProductService
+    private productService: ProductService,
+    private rateLimitService: RateLimitService
   ) {
     this.initializeCart();
   }
@@ -68,7 +70,6 @@ export class CartService {
       })
     );
   }
-
 
   private loadCartFromLocalStorage() {
     try {
@@ -113,7 +114,6 @@ export class CartService {
       this.detailedCartItemsSubject.next(detailedItems);
     });
   }
-  
 
   private saveToLocalStorage() {
     localStorage.setItem(this.LOCAL_KEY, JSON.stringify(this.cartItemsSubject.value));
@@ -152,18 +152,56 @@ export class CartService {
     }
   }
 
+  private handleHttpError(error: any): Observable<never> {
+    console.error('Cart service error:', error);
+
+    if (error.status === 429) {
+      this.rateLimitService.incrementRequestCount();
+      const retryAfter = error.error?.retryAfter || 60;
+      return throwError(() => ({
+        ...error,
+        isRateLimit: true,
+        retryAfter: retryAfter,
+        message: error.error?.message || 'Rate limit exceeded. Please try again later.'
+      }));
+    } else if (error.status === 0 || error.statusText === 'Unknown Error') {
+      console.warn('Possible CORS-blocked rate limit error detected in cart service');
+      this.rateLimitService.incrementRequestCount();
+      
+      const remainingRequests = this.rateLimitService.getRemainingRequests();
+      if (remainingRequests <= 0) {
+        return throwError(() => ({
+          ...error,
+          isRateLimit: true,
+          message: 'Too many requests. Please wait before making more changes.'
+        }));
+      } else {
+        return throwError(() => ({
+          ...error,
+          message: 'Network error occurred. You may be making requests too quickly.'
+        }));
+      }
+    } else if (error.status === 400 && error.error?.message) {
+      return throwError(() => new Error(error.error.message));
+    }
+
+    return throwError(() => error);
+  }
+
   addItemToCart(productId: string, quantity: number = 1): Observable<any> {
     const dto: AddCartItemDto = { productId, quantity };
 
     if (this.authService.isAuthenticated()) {
+      if (!this.rateLimitService.canMakeRequest()) {
+        return throwError(() => new Error('Rate limit exceeded. Please wait before making more requests.'));
+      }
+
       return this.http.post(this.baseUrl, dto, this.getHeaders()).pipe(
-        tap(() => this.refreshCart()),
-        catchError(error => {
-          if (error.status === 400 && error.error?.message) {
-            return throwError(() => new Error(error.error.message));
-          }
-          return throwError(() => error);
-        })
+        tap(() => {
+          this.rateLimitService.incrementRequestCount();
+          this.refreshCart();
+        }),
+        catchError(error => this.handleHttpError(error))
       );
     } else {
       return new Observable(observer => {
@@ -191,8 +229,16 @@ export class CartService {
 
   removeItemFromCart(productId: string): Observable<any> {
     if (this.authService.isAuthenticated()) {
+      if (!this.rateLimitService.canMakeRequest()) {
+        return throwError(() => new Error('Rate limit exceeded. Please wait before making more requests.'));
+      }
+
       return this.http.delete(`${this.baseUrl}/${productId}`, this.getHeaders()).pipe(
-        tap(() => this.refreshCart())
+        tap(() => {
+          this.rateLimitService.incrementRequestCount();
+          this.refreshCart();
+        }),
+        catchError(error => this.handleHttpError(error))
       );
     } else {
       const updated = this.cartItemsSubject.value.filter(i => i.productId !== productId);
@@ -207,14 +253,16 @@ export class CartService {
     const dto: UpdateCartItemQuantityDto = { productId, delta };
 
     if (this.authService.isAuthenticated()) {
+      if (!this.rateLimitService.canMakeRequest()) {
+        return throwError(() => new Error('Rate limit exceeded. Please wait before making more requests.'));
+      }
+
       return this.http.patch(`${this.baseUrl}/quantity`, dto, this.getHeaders()).pipe(
-        tap(() => this.refreshCart()),
-        catchError(error => {
-          if (error.status === 400 && error.error?.message) {
-            return throwError(() => new Error(error.error.message));
-          }
-          return throwError(() => error);
-        })
+        tap(() => {
+          this.rateLimitService.incrementRequestCount();
+          this.refreshCart();
+        }),
+        catchError(error => this.handleHttpError(error))
       );
     } else {
       if (delta > 0) {
@@ -255,8 +303,17 @@ export class CartService {
 
   clearCart(): Observable<any> {
     if (this.authService.isAuthenticated()) {
+      if (!this.rateLimitService.canMakeRequest()) {
+        return throwError(() => new Error('Rate limit exceeded. Please wait before making more requests.'));
+      }
+
       return this.http.delete(`${this.baseUrl}/clear`, this.getHeaders()).pipe(
-        tap(() => this.cartItemsSubject.next([]))
+        tap(() => {
+          this.rateLimitService.incrementRequestCount();
+          this.cartItemsSubject.next([]);
+          this.detailedCartItemsSubject.next([]);
+        }),
+        catchError(error => this.handleHttpError(error))
       );
     } else {
       this.cartItemsSubject.next([]);
@@ -280,19 +337,40 @@ export class CartService {
       return;
     }
 
+    if (!this.rateLimitService.canMakeRequest()) {
+      console.warn('Cannot sync cart due to rate limit');
+      return;
+    }
+
     const requests = localItems.map(item =>
       this.http.post(this.baseUrl, {
         productId: item.productId,
         quantity: item.quantity
-      } as AddCartItemDto, this.getHeaders())
+      } as AddCartItemDto, this.getHeaders()).pipe(
+        catchError(error => {
+          console.error('Error syncing cart item:', error);
+          return of(null);
+        })
+      )
     );
 
-    Promise.all(requests.map(r => r.toPromise()))
-      .then(() => {
+    forkJoin(requests).subscribe({
+      next: () => {
+        this.rateLimitService.incrementRequestCount();
         this.clearLocalStorage();
         this.refreshCart();
-      })
-      .catch(() => {
-      });
+      },
+      error: (error) => {
+        console.error('Error during cart sync:', error);
+      }
+    });
+  }
+
+  canMakeRequest(): boolean {
+    return this.rateLimitService.canMakeRequest();
+  }
+
+  getRemainingRequests(): number {
+    return this.rateLimitService.getRemainingRequests();
   }
 }

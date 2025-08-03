@@ -5,7 +5,7 @@
                 <circle cx="9" cy="21" r="1" />
                 <circle cx="20" cy="21" r="1" />
                 <path d="m1 1 4 4.36 2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-            </svg>  
+            </svg>
             Your Shopping Cart
         </h1>
         <div class="items-count" *ngIf="detailedCartItems.length > 0">
@@ -13,7 +13,38 @@
         </div>
     </div>
 
-    <div class="error-message" *ngIf="error" role="alert">
+    <!-- Rate Limit Warning -->
+    <div class="rate-limit-warning" *ngIf="rateLimitWarning && !isRateLimited" role="alert">
+        <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        <span>Slow down! You're making requests too quickly. {{ getRemainingRequests() }} requests remaining this
+            minute.</span>
+        <button class="close-warning" (click)="rateLimitWarning = false" aria-label="Close warning">×</button>
+    </div>
+
+    <!-- Rate Limit Block Message -->
+    <div class="rate-limit-error" *ngIf="isRateLimited" role="alert">
+        <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="15" y1="9" x2="9" y2="15" />
+            <line x1="9" y1="9" x2="15" y2="15" />
+        </svg>
+        <div class="rate-limit-content">
+            <div class="rate-limit-time">
+                <strong>Rate limit active: {{ formatTime(rateLimitTimeRemaining) }} remaining</strong>
+            </div>
+            <div class="rate-limit-explanation">
+                You've made too many requests in a short time. This cooldown continues even if you navigate to other
+                pages to prevent server overload and ensure smooth operation for all users.
+            </div>
+        </div>
+    </div>
+
+    <!-- Regular Error Message -->
+    <div class="error-message" *ngIf="error && !isRateLimited" role="alert">
         <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <circle cx="12" cy="12" r="10" />
             <line x1="15" y1="9" x2="9" y2="15" />
@@ -68,10 +99,11 @@
                     </div>
                 </div>
 
-                <div class="quantity-controls">
+                <div class="quantity-controls" [class.disabled]="isRateLimited">
                     <button class="quantity-btn decrease" (click)="decreaseQuantity(item.productId)"
                         [disabled]="!canDecreaseQuantity(item)"
                         [class.loading]="pendingRequests.has('decrease_' + item.productId)"
+                        [title]="isRateLimited ? 'Please wait before making more changes' : 'Decrease quantity'"
                         aria-label="Decrease quantity">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <line x1="5" y1="12" x2="19" y2="12" />
@@ -83,7 +115,7 @@
                     <button class="quantity-btn increase" (click)="increaseQuantity(item.productId)"
                         [disabled]="!canIncreaseQuantity(item)"
                         [class.loading]="pendingRequests.has('increase_' + item.productId)"
-                        [title]="!canIncreaseQuantity(item) ? 'Maximum quantity reached' : 'Increase quantity'"
+                        [title]="isRateLimited ? 'Please wait before making more changes' : (!canIncreaseQuantity(item) ? 'Maximum quantity reached' : 'Increase quantity')"
                         aria-label="Increase quantity">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <line x1="12" y1="5" x2="12" y2="19" />
@@ -98,7 +130,9 @@
 
                 <button class="remove-btn" (click)="removeItem(item.productId)"
                     [disabled]="!canRemoveItem(item.productId)"
-                    [class.loading]="pendingRequests.has('remove_' + item.productId)" aria-label="Remove item">
+                    [class.loading]="pendingRequests.has('remove_' + item.productId)"
+                    [title]="isRateLimited ? 'Please wait before making more changes' : 'Remove item'"
+                    aria-label="Remove item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <polyline points="3,6 5,6 21,6" />
                         <path d="M19,6V20a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6M8,6V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6" />
@@ -135,13 +169,13 @@
                     <span>{{ totalPrice | currency }}</span>
                 </div>
 
-                <button class="checkout-btn" (click)="goToOrderPage()">
+                <button class="checkout-btn" [disabled]="isRateLimited" [ngClass]="{ 'disabled-btn': isRateLimited }"
+                    (click)="goToOrderPage()">
                     <svg class="checkout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M9 12l2 2 4-4" />
+                        <path d="M9 12l2 2 4-4" />
                     </svg>
                     Proceed to Checkout
-                  </button>
-
+                </button>
                 <button class="continue-shopping-link" routerLink="/products">
                     Continue Shopping
                 </button>

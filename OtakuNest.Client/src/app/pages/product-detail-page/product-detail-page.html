@@ -3,13 +3,13 @@
     <div class="loading-spinner">⏳</div>
     <p>Loading product...</p>
   </div>
-  
+ 
   <div *ngIf="error && !isLoading" class="error-container">
     <div class="error-icon">❌</div>
     <p>{{ error }}</p>
     <button class="retry-btn" (click)="clearError()">Try Again</button>
   </div>
-  
+ 
   <div *ngIf="product && !isLoading" class="product-detail">
     <div class="product-images">
       <div class="main-image">
@@ -25,7 +25,7 @@
         </div>
       </div>
     </div>
-    
+   
     <div class="product-info">
       <div class="product-header">
         <h1 class="product-title">{{ product.name }}</h1>
@@ -37,7 +37,7 @@
           </div>
         </div>
       </div>
-      
+     
       <div class="product-pricing">
         <div class="price-container">
           <div class="price-section">
@@ -57,47 +57,69 @@
           </span>
         </div>
       </div>
-      
+     
       <div class="product-description">
         <h3>Description</h3>
         <p>{{ product.description }}</p>
       </div>
-      
+     
       <div class="product-details">
         <div class="detail-item">
           <span class="detail-label">Category:</span>
           <span class="detail-value">{{ product.category }}</span>
         </div>
       </div>
-      
+     
       <div class="product-actions">
-        <!-- Error Message -->
-        <div *ngIf="error" class="error-message" (click)="clearError()">
+        <div *ngIf="(rateLimitWarning && !isRateLimited) || getRemainingRequests() <= 5" 
+             class="rate-limit-warning" 
+             (click)="clearRateLimitWarning()">
+          ⚠️ You're making requests quickly. Slow down to avoid temporary restrictions.
+          <small>({{ getRemainingRequests() }} requests remaining)</small>
+        </div>
+
+        <div *ngIf="isRateLimited || getRemainingRequests() <= 0" class="rate-limit-block">
+          🚫 Too many requests! Please wait {{ formatTime(rateLimitTimeRemaining) }} before making more changes.
+          <small>This helps prevent server overload.</small>
+        </div>
+
+        <div *ngIf="error && !rateLimitErrorMessage" class="error-message" (click)="clearError()">
           ❌ {{ error }}
         </div>
-        
+       
         <button
           class="add-to-cart-btn"
           [disabled]="!canAddToCart()"
           (click)="addToCart()"
         >
-          🛒 Add to Cart
+          <span *ngIf="isAddingToCart">⏳ Adding...</span>
+          <span *ngIf="!isAddingToCart">🛒 Add to Cart</span>
         </button>
-        
+
+        <div *ngIf="rateLimitWarning || isRateLimited" class="rate-limit-info">
+          <small>
+            Requests remaining: {{ getRemainingRequests() }} | 
+            Status: {{ isRateLimited ? 'Blocked' : 'Active' }}
+            <span *ngIf="isRateLimited"> | Time left: {{ formatTime(rateLimitTimeRemaining) }}</span>
+          </small>
+        </div>
+       
         <div class="action-buttons">
-          <button class="wishlist-btn" disabled>
+          <button class="wishlist-btn" 
+                  [disabled]="isRateLimited || !rateLimitService.canMakeRequest()">
             ❤️ Add to Wishlist
           </button>
-          <button class="share-btn" disabled>
+          <button class="share-btn" 
+                  [disabled]="isRateLimited || !rateLimitService.canMakeRequest()">
             📤 Share
           </button>
         </div>
       </div>
     </div>
   </div>
-  
-  <div *ngIf="addToCartSuccess" 
-       class="success-toast" 
+ 
+  <div *ngIf="addToCartSuccess"
+       class="success-toast"
        [class.toast-enter]="!isToastExiting"
        [class.toast-exit]="isToastExiting">
     <div class="toast-content">

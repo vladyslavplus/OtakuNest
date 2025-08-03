@@ -1,4 +1,6 @@
-<div class="product-card" [attr.data-category]="product.category">
+<div class="product-card" [attr.data-category]="product.category" [class.rate-limited]="isRateLimited"
+  [class.rate-warning]="rateLimitWarning && !isRateLimited">
+
   <div class="product-image">
     <ng-container *ngIf="product.imageUrl; else noImage">
       <a [routerLink]="['/products', product.id]">
@@ -11,6 +13,7 @@
       </div>
     </ng-template>
   </div>
+
   <div class="product-info">
     <div class="product-content">
       <h3 class="product-title">
@@ -21,25 +24,44 @@
       <p class="product-price">${{ product.price }}</p>
     </div>
 
-    <div class="product-actions">
-      <button *ngIf="cartQuantity === 0" class="add-to-cart-btn" (click)="addToCart()" [disabled]="isLoading">
-        <span *ngIf="!isLoading">+</span>
+    <div class="product-actions" [class.disabled]="isRateLimited">
+      <div class="rate-limit-overlay" *ngIf="isRateLimited">
+        <div class="rate-limit-content">
+          <div class="rate-limit-icon">⏳</div>
+          <div class="rate-limit-text">{{ rateLimitService.formatTime(rateLimitTimeRemaining) }}</div>
+        </div>
+      </div>
+
+      <button *ngIf="cartQuantity === 0" class="add-to-cart-btn" [class.warning]="rateLimitWarning && !isRateLimited"
+        (click)="addToCart()" [disabled]="!canAddToCart()" [title]="getButtonTitle() || 'Add to cart'">
+        <span *ngIf="!isLoading && !rateLimitWarning">+</span>
+        <span *ngIf="!isLoading && rateLimitWarning && !isRateLimited" class="warning-indicator">⚠️</span>
         <span *ngIf="isLoading" class="loading-spinner">⟳</span>
       </button>
 
-      <div *ngIf="cartQuantity > 0" class="quantity-controller">
-        <button class="quantity-btn decrease" (click)="removeFromCart()" [disabled]="isLoading"
-          title="Decrease quantity">
+      <div *ngIf="cartQuantity > 0" class="quantity-controller" [class.warning]="rateLimitWarning && !isRateLimited">
+        <button class="quantity-btn decrease" (click)="removeFromCart()" [disabled]="!canRemoveFromCart()"
+          [title]="getButtonTitle() || 'Decrease quantity'">
           −
         </button>
-        <span class="quantity-display">{{ cartQuantity }}</span>
-        <button class="quantity-btn increase" (click)="addToCart()" [disabled]="isLoading" title="Increase quantity">
+        <span class="quantity-display">
+          {{ cartQuantity }}
+          <span *ngIf="rateLimitWarning && !isRateLimited" class="remaining-indicator">{{ getRemainingRequests()
+            }}</span>
+        </span>
+        <button class="quantity-btn increase" (click)="addToCart()" [disabled]="!canAddToCart()"
+          [title]="getButtonTitle() || 'Increase quantity'">
           +
         </button>
-        <button class="quantity-btn remove-all" (click)="removeCompletelyFromCart()" [disabled]="isLoading"
-          title="Clear all">
+        <button class="quantity-btn remove-all" (click)="removeCompletelyFromCart()"
+          [disabled]="!canRemoveCompletelyFromCart()" [title]="getButtonTitle() || 'Clear all'">
           🗑️
         </button>
+      </div>
+
+      <div class="rate-limit-progress" *ngIf="rateLimitWarning && !isRateLimited">
+        <div class="progress-bar" [style.width.%]="(getRemainingRequests() / 55) * 100"></div>
+        <div class="progress-text">{{ getRemainingRequests() }} requests left</div>
       </div>
     </div>
   </div>
