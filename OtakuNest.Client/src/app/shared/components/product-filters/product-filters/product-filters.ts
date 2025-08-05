@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Output } from '@angular/core';
-import { ProductQueryParams } from '../../../../features/product/models/product-query-params.model';
+import { ProductParameters } from '../../../../core/params/product-parameters';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgxSliderModule, Options } from '@angular-slider/ngx-slider';
@@ -12,11 +12,11 @@ import { NgxSliderModule, Options } from '@angular-slider/ngx-slider';
   styleUrl: './product-filters.css'
 })
 export class ProductFilters {
-  @Output() filtersChanged = new EventEmitter<ProductQueryParams>();
+  @Output() filtersChanged = new EventEmitter<ProductParameters>();
 
   maxPriceLimit = 1000;
 
-  filters: ProductQueryParams = {
+  filters: ProductParameters = {
     category: '',
     minPrice: 0,
     maxPrice: this.maxPriceLimit,

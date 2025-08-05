@@ -9,7 +9,7 @@ import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-
 import { delay } from 'rxjs';
 import { RouterModule } from '@angular/router';
 import { PaginatedResult } from '../../core/pagination/paginated-result.model';
-import { ProductQueryParams } from '../../features/product/models/product-query-params.model';
+import { ProductParameters } from '../../core/params/product-parameters';
 
 @Component({
   selector: 'app-home-page',
@@ -40,7 +40,7 @@ export class HomePage implements OnInit{
     this.loading = true;
     this.error = '';
 
-    const params: ProductQueryParams = {
+    const params: ProductParameters = {
       category: category,
       pageNumber: 1,
       pageSize: 6

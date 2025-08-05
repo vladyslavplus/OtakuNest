@@ -1,4 +1,4 @@
-export interface ProductQueryParams {
+export interface ProductParameters {
     name?: string;
     category?: string;
     minPrice?: number;

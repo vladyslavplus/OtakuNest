@@ -6,7 +6,7 @@ import { ProductCard } from '../../shared/components/product-card/product-card';
 import { Product } from '../../features/product/models/product.model';
 import { PaginatedResult } from '../../core/pagination/paginated-result.model';
 import { ProductService } from '../../features/product/services/product.service';
-import { ProductQueryParams } from '../../features/product/models/product-query-params.model';
+import { ProductParameters } from '../../core/params/product-parameters';
 
 @Component({
   selector: 'app-products-page',
@@ -22,7 +22,7 @@ export class ProductsPage implements OnInit {
   isLoading: boolean = false;
   hasError: boolean = false;
 
-  filters: ProductQueryParams = {
+  filters: ProductParameters = {
     pageNumber: 1,
     pageSize: 12
   };
@@ -68,7 +68,7 @@ export class ProductsPage implements OnInit {
     this.onFiltersChanged(this.filters);
   }
 
-  onFiltersChanged(filters: ProductQueryParams) {
+  onFiltersChanged(filters: ProductParameters) {
     this.isLoading = true;
     this.hasError = false;
     this.filters = filters;
