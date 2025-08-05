@@ -29,7 +29,7 @@ export class ProductService {
       map((response: HttpResponse<Product[]>) => {
         const paginatedResult: PaginatedResult<Product[]> = {
           data: response.body || [],
-          pagination: JSON.parse(response.headers.get('X-Pagination') || '{}')
+          pagination: JSON.parse(response.headers.get('Pagination') || '{}')
         };
         return paginatedResult;
       })

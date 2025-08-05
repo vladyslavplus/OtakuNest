@@ -2,50 +2,40 @@
   <div *ngIf="isLoading" class="loading">
     <p>Loading...</p>
   </div>
+
   <div *ngIf="error && !isLoading && !user" class="error">
     <p>{{ error }}</p>
   </div>
+
   <div *ngIf="user && !isLoading">
-    <!-- Logout Button - Right Top Corner -->
+    <!-- Logout -->
     <div class="logout-container">
-      <button 
-        class="logout-btn"
-        [class.loading]="isLoggingOut"
-        [disabled]="isLoggingOut"
-        (click)="onLogout()"
+      <button class="logout-btn" [class.loading]="isLoggingOut" [disabled]="isLoggingOut" (click)="onLogout()"
         title="Sign out of your account">
         <span class="logout-icon" *ngIf="!isLoggingOut">👋</span>
         <span class="logout-text">{{ isLoggingOut ? 'Signing out...' : 'Logout' }}</span>
       </button>
     </div>
 
+    <!-- Tabs -->
     <div class="account-nav">
       <div class="nav-tabs">
-        <button 
-          class="nav-tab" 
-          [class.active]="activeTab === 'account'"
-          (click)="switchTab('account')">
+        <button class="nav-tab" [class.active]="activeTab === 'account'" (click)="switchTab('account')">
           Account
         </button>
-        <button 
-          class="nav-tab" 
-          [class.active]="activeTab === 'history'"
-          (click)="switchTab('history')">
+        <button class="nav-tab" [class.active]="activeTab === 'history'" (click)="switchTab('history')">
           History
         </button>
       </div>
     </div>
 
+    <!-- Account Info -->
     <div *ngIf="activeTab === 'account'">
       <h2>Your Account</h2>
-      
-      <div *ngIf="error" class="error">
-        <p>{{ error }}</p>
-      </div>
-      <div *ngIf="successMessage" class="success">
-        <p>{{ successMessage }}</p>
-      </div>
-     
+
+      <div *ngIf="error" class="error"><p>{{ error }}</p></div>
+      <div *ngIf="successMessage" class="success"><p>{{ successMessage }}</p></div>
+
       <div class="user-info">
         <p><strong>Username:</strong> {{ user.userName }}</p>
         <p><strong>Email:</strong> {{ user.email }}</p>
@@ -55,68 +45,125 @@
 
       <form (ngSubmit)="onSubmit()" class="update-form">
         <h3>Update Information</h3>
-       
+
         <div class="form-group">
           <label for="email">Email:</label>
-          <input
-            id="email"
-            type="email"
-            [(ngModel)]="updateData.email"
-            name="email"
-            placeholder="Enter new email"
-            [disabled]="isUpdating"
-          />
+          <input id="email" type="email" [(ngModel)]="updateData.email" name="email" placeholder="Enter new email"
+            [disabled]="isUpdating" />
         </div>
         <div class="form-group">
           <label for="password">Password:</label>
-          <input
-            id="password"
-            type="password"
-            [(ngModel)]="updateData.password"
-            name="password"
-            placeholder="Enter new password"
-            [disabled]="isUpdating"
-          />
+          <input id="password" type="password" [(ngModel)]="updateData.password" name="password"
+            placeholder="Enter new password" [disabled]="isUpdating" />
         </div>
         <div class="form-group">
           <label for="phoneNumber">Phone Number:</label>
-          <input
-            id="phoneNumber"
-            type="text"
-            [(ngModel)]="updateData.phoneNumber"
-            name="phoneNumber"
-            placeholder="Enter new phone number"
-            [disabled]="isUpdating"
-          />
+          <input id="phoneNumber" type="text" [(ngModel)]="updateData.phoneNumber" name="phoneNumber"
+            placeholder="Enter new phone number" [disabled]="isUpdating" />
         </div>
         <div class="form-group">
           <label for="userName">Username:</label>
-          <input
-            id="userName"
-            type="text"
-            [(ngModel)]="updateData.userName"
-            name="userName"
-            placeholder="Enter new username"
-            [disabled]="isUpdating"
-          />
+          <input id="userName" type="text" [(ngModel)]="updateData.userName" name="userName"
+            placeholder="Enter new username" [disabled]="isUpdating" />
         </div>
-        
-        <button 
-          type="submit" 
-          class="update-btn"
-          [class.loading]="isUpdating"
-          [disabled]="isUpdating">
+
+        <button type="submit" class="update-btn" [class.loading]="isUpdating" [disabled]="isUpdating">
           {{ isUpdating ? 'Updating...' : 'Update Profile' }}
         </button>
       </form>
     </div>
 
+    <!-- Order History -->
     <div *ngIf="activeTab === 'history'" class="history-content">
       <h2>Order History</h2>
-      <div class="coming-soon">
-        <div class="coming-soon-icon">📦</div>
-        <h3>Order History Coming Soon</h3>
-        <p>We're working on bringing you a comprehensive order history feature.</p>
+
+      <div *ngIf="pagination && pagination.totalCount === 0" class="no-orders">
+        <div class="no-orders-icon">📦</div>
+        <h3>No Orders Yet</h3>
+        <p>You haven't placed any orders. Start shopping to see your order history here!</p>
+      </div>
+
+      <div *ngIf="pagination && pagination.totalCount > 0">
+        <div class="orders-summary">
+          <p>Total Orders: <strong>{{ pagination.totalCount }}</strong></p>
+          <p *ngIf="pagination.totalPages > 1">
+            Showing {{ (pagination.currentPage - 1) * pagination.pageSize + 1 }} -
+            {{ Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount) }}
+            of {{ pagination.totalCount }}
+          </p>
+        </div>
+
+        <div class="order-list">
+          <div *ngFor="let order of orders; trackBy: trackByOrderId" class="order-card">
+            <div class="order-header">
+              <div class="order-info">
+                <h3>Order #{{ order.id }}</h3>
+                <span class="order-date">{{ order.createdAt | date:'mediumDate' }}</span>
+              </div>
+              <div class="order-status">
+                <span class="status-badge" [class]="'status-' + order.status.toLowerCase()">
+                  {{ order.status }}
+                </span>
+              </div>
+            </div>
+
+            <div class="order-details">
+              <div class="order-meta">
+                <div class="meta-item">
+                  <span class="meta-label">Total:</span>
+                  <span class="meta-value total-price">{{ order.totalPrice | currency }}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Items:</span>
+                  <span class="meta-value">{{ order.items.length }}</span>
+                </div>
+              </div>
+
+              <div class="shipping-address">
+                <span class="meta-label">Shipping to:</span>
+                <p>{{ order.shippingAddress }}</p>
+              </div>
+            </div>
+
+            <div class="order-items">
+              <h4>Order Items</h4>
+              <div class="items-list">
+                <div *ngFor="let item of order.items" class="item-row">
+                  <div class="item-info">
+                    <span class="item-name">{{ item.productName || 'Loading...' }}</span>
+                    <span class="item-quantity">Quantity: {{ item.quantity }}</span>
+                  </div>
+                  <div class="item-price">
+                    <span class="unit-price">{{ item.unitPrice | currency }}</span>
+                    <span class="total-price">{{ item.totalPrice | currency }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div *ngIf="pagination.totalPages > 1" class="pagination">
+          <button class="pagination-btn prev-btn" [disabled]="pagination.currentPage === 1" (click)="previousPage()">
+            ‹ Previous
+          </button>
+
+          <div class="pagination-numbers">
+            <button *ngFor="let page of pageNumbers"
+                    class="pagination-number"
+                    [class.active]="page === pagination.currentPage"
+                    (click)="changePage(page)">
+              {{ page }}
+            </button>
+          </div>
+
+          <button class="pagination-btn next-btn"
+                  [disabled]="pagination.currentPage === pagination.totalPages"
+                  (click)="nextPage()">
+            Next ›
+          </button>
+        </div>
       </div>
     </div>
   </div>
