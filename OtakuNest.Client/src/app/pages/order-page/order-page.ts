@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { DetailedCartItem } from '../../features/cart/models/DetailedCartItem.model';
+import { DetailedCartItem } from '../../features/cart/models/detailed-cart-item.model';
 import { CartService } from '../../features/cart/services/cart.service';
 import { OrderService } from '../../features/orders/services/order.service';
 import { Router } from '@angular/router';

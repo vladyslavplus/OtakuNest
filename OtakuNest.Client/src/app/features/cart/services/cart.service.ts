@@ -2,12 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, catchError, forkJoin, map, Observable, of, tap, throwError } from 'rxjs';
 import { AuthService } from '../../user/services/auth.service';
-import { CartDto } from '../models/CartDto.model';
-import { CartItemDto } from '../models/CartItemDto.model';
-import { AddCartItemDto } from '../models/AddCartItemDto.model';
-import { UpdateCartItemQuantityDto } from '../models/UpdateCartItemQuantityDto.model';
+import { CartDto } from '../models/cart.dto';
+import { CartItemDto } from '../models/cart-item.dto';
+import { AddCartItemDto } from '../models/add-cart-item.dto';
+import { UpdateCartItemQuantityDto } from '../models/update-cart-item-quantity.dto';
 import { ProductService } from '../../product/services/product.service';
-import { DetailedCartItem } from '../models/DetailedCartItem.model';
+import { DetailedCartItem } from '../models/detailed-cart-item.model';
 import { RateLimitService } from '../../../core/limiting/services/rate-limit.service';
 
 @Injectable({
