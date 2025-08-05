@@ -38,10 +38,11 @@ namespace OtakuNest.OrderService.Controllers
 
         [HttpGet("me")]
         [Authorize]
-        public async Task<ActionResult<List<OrderDto>>> GetMyOrders(CancellationToken cancellationToken)
+        public async Task<ActionResult<PagedList<OrderDto>>> GetMyOrders([FromQuery] OrderParameters parameters, CancellationToken cancellationToken)
         {
-            var userId = User.GetUserId();
-            var orders = await _orderService.GetOrdersByUserIdAsync(userId, cancellationToken);
+            parameters.UserId = User.GetUserId();
+            var orders = await _orderService.GetUserOrdersAsync(parameters, cancellationToken);
+            Response.AddPaginationHeader(orders);
             return Ok(orders);
         }
 

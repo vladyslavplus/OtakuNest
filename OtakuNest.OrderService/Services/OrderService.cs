@@ -86,15 +86,53 @@ namespace OtakuNest.OrderService.Services
             return order is null ? null : MapToDto(order);
         }
 
-        public async Task<List<OrderDto>> GetOrdersByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+        public async Task<PagedList<OrderDto>> GetUserOrdersAsync(
+            OrderParameters parameters,
+            CancellationToken cancellationToken = default)
         {
-            var orders = await _dbContext.Orders
-                .Include(o => o.Items)
-                .Where(o => o.UserId == userId)
-                .ToListAsync(cancellationToken);
+            if (parameters.UserId is null)
+                throw new ArgumentException("UserId must be provided to get user orders.");
 
-            return orders.Select(MapToDto).ToList();
+            var query = _dbContext.Orders
+                .Include(o => o.Items)
+                .Where(o => o.UserId == parameters.UserId.Value)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(parameters.Status)
+                && Enum.TryParse<OrderStatus>(parameters.Status, true, out var parsedStatus))
+            {
+                query = query.Where(o => o.Status == parsedStatus);
+            }
+
+            if (parameters.MinPrice.HasValue)
+                query = query.Where(o => o.TotalPrice >= parameters.MinPrice.Value);
+
+            if (parameters.MaxPrice.HasValue)
+                query = query.Where(o => o.TotalPrice <= parameters.MaxPrice.Value);
+
+            if (parameters.FromDate.HasValue)
+                query = query.Where(o => o.CreatedAt >= parameters.FromDate.Value);
+
+            if (parameters.ToDate.HasValue)
+                query = query.Where(o => o.CreatedAt <= parameters.ToDate.Value);
+
+            if (parameters.ProductId.HasValue)
+                query = query.Where(o => o.Items.Any(i => i.ProductId == parameters.ProductId.Value));
+
+            query = _sortHelper.ApplySort(query, parameters.OrderBy);
+
+            var pagedOrders = await PagedList<Order>.ToPagedListAsync(
+                query.AsNoTracking(),
+                parameters.PageNumber,
+                parameters.PageSize,
+                cancellationToken
+            );
+
+            var dtoList = pagedOrders.Select(MapToDto).ToList();
+
+            return new PagedList<OrderDto>(dtoList, pagedOrders.TotalCount, parameters.PageNumber, parameters.PageSize);
         }
+
 
         public async Task<OrderDto> CreateOrderAsync(Guid userId, CreateOrderDto dto, CancellationToken cancellationToken = default)
         {
