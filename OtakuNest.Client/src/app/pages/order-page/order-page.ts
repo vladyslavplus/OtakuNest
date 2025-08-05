@@ -3,10 +3,12 @@ import { DetailedCartItem } from '../../features/cart/models/DetailedCartItem.mo
 import { CartService } from '../../features/cart/services/cart.service';
 import { OrderService } from '../../features/orders/services/order.service';
 import { Router } from '@angular/router';
-import { CreateOrderDto } from '../../features/orders/models/CreateOrderDto.model';
+import { CreateOrderDto } from '../../features/orders/models/create-order.dto';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
+import { OrderStage } from '../../features/orders/models/order-stage.model';
+import { OrderDto } from '../../features/orders/models/order.dto';
 
 @Component({
   selector: 'app-order-page',
@@ -20,7 +22,25 @@ export class OrderPage implements OnInit, OnDestroy {
   shippingAddress = '';
   error: string | null = null;
   isSubmitting = false;
-  
+  isOrderCompleted = false;
+  completedOrder: OrderDto | null = null;
+
+  orderApiCompleted = false;
+  animationsCompleted = false;
+
+  orderStages: OrderStage[] = [
+    { id: 'validating', label: 'Validating Order', status: 'pending', icon: 'check-circle' },
+    { id: 'processing', label: 'Processing Order', status: 'pending', icon: 'shopping-cart' },
+    { id: 'completing', label: 'Creating Order', status: 'pending', icon: 'package' }
+  ];
+
+  private readonly stageDurations: number[] = [2000, 3000, 4000];
+
+  currentStageIndex = 0;
+
+  autoRedirectCountdown = 5;
+  autoRedirectTimer: any = null;
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -36,6 +56,9 @@ export class OrderPage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.autoRedirectTimer) {
+      clearInterval(this.autoRedirectTimer);
+    }
   }
 
   private loadCartItems(): void {
@@ -43,8 +66,8 @@ export class OrderPage implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(items => {
         this.cartItems = items;
-        
-        if (items.length === 0) {
+
+        if (items.length === 0 && !this.isSubmitting && !this.completedOrder) {
           this.router.navigate(['/cart']);
           return;
         }
@@ -55,7 +78,7 @@ export class OrderPage implements OnInit, OnDestroy {
 
   private validateItemsAvailability(): void {
     const unavailableItems = this.cartItems.filter(item => !item.isAvailable);
-    
+
     if (unavailableItems.length > 0) {
       const itemNames = unavailableItems.map(item => item.productName).join(', ');
       this.error = `Some items are no longer available: ${itemNames}. Please remove them from your cart before proceeding.`;
@@ -93,12 +116,12 @@ export class OrderPage implements OnInit, OnDestroy {
       return;
     }
 
-    const insufficientStockItems = this.cartItems.filter(item => 
+    const insufficientStockItems = this.cartItems.filter(item =>
       item.quantity > item.availableQuantity
     );
-    
+
     if (insufficientStockItems.length > 0) {
-      const itemDetails = insufficientStockItems.map(item => 
+      const itemDetails = insufficientStockItems.map(item =>
         `${item.productName} (requested: ${item.quantity}, available: ${item.availableQuantity})`
       ).join(', ');
       this.error = `Insufficient stock for: ${itemDetails}`;
@@ -119,22 +142,29 @@ export class OrderPage implements OnInit, OnDestroy {
     };
 
     this.isSubmitting = true;
+    this.currentStageIndex = 0;
+    this.resetOrderStages();
+
+    this.simulateOrderStages();
 
     this.orderService.createOrder(createOrderDto)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (order) => {
           console.log('Order created successfully:', order);
-          
+          this.completedOrder = order;
+
           this.cartService.clearCart()
             .pipe(takeUntil(this.destroy$))
             .subscribe({
               next: () => {
-                this.handleOrderSuccess(order);
+                this.orderApiCompleted = true;
+                this.checkIfReadyForSuccess();
               },
               error: (clearError) => {
                 console.error('Error clearing cart:', clearError);
-                this.handleOrderSuccess(order);
+                this.orderApiCompleted = true;
+                this.checkIfReadyForSuccess();
               }
             });
         },
@@ -144,21 +174,80 @@ export class OrderPage implements OnInit, OnDestroy {
       });
   }
 
-  private handleOrderSuccess(order: any): void {
-    this.isSubmitting = false;
-    
-    if (order.id) {
-      this.router.navigate(['/orders', order.id]);
-    } else {
-      this.router.navigate(['/'], { 
-        queryParams: { orderSuccess: 'true' } 
-      });
+  private resetOrderStages(): void {
+    this.orderStages.forEach(stage => {
+      stage.status = 'pending';
+    });
+    this.currentStageIndex = 0;
+    this.orderApiCompleted = false;
+    this.animationsCompleted = false;
+  }
+
+  private simulateOrderStages(): void {
+    let totalDelay = 0;
+    let cancelled = false;
+
+    const cancelSimulation = () => cancelled = true;
+    this.destroy$.pipe(takeUntil(this.destroy$)).subscribe(() => cancelSimulation());
+
+    this.orderStages.forEach((_, index) => {
+      setTimeout(() => {
+        if (cancelled) return;
+
+        if (index > 0) this.orderStages[index - 1].status = 'completed';
+
+        this.currentStageIndex = index;
+        this.orderStages[index].status = 'active';
+
+        if (index === this.orderStages.length - 1) {
+          setTimeout(() => {
+            if (cancelled) return;
+            this.orderStages[index].status = 'completed';
+            this.animationsCompleted = true;
+            this.checkIfReadyForSuccess();
+          }, this.stageDurations[index]);
+        }
+      }, totalDelay);
+
+      totalDelay += this.stageDurations[index];
+    });
+  }
+
+  private checkIfReadyForSuccess(): void {
+    if (this.orderApiCompleted && this.animationsCompleted) {
+      this.handleOrderSuccess();
     }
+  }
+
+  private handleOrderSuccess(): void {
+    this.orderStages[2].status = 'completed';
+    this.isSubmitting = false;
+    this.isOrderCompleted = true;
+
+    setTimeout(() => {
+      this.startAutoRedirectTimer();
+    }, 1500);
+  }
+
+  private startAutoRedirectTimer(): void {
+    this.autoRedirectCountdown = 5;
+
+    this.autoRedirectTimer = setInterval(() => {
+      this.autoRedirectCountdown--;
+
+      if (this.autoRedirectCountdown <= 0) {
+        this.navigateToHome();
+      }
+    }, 1000);
   }
 
   private handleOrderError(err: any): void {
     console.error('Error creating order:', err);
     this.isSubmitting = false;
+    this.isOrderCompleted = false;
+    this.orderApiCompleted = false;
+    this.animationsCompleted = false;
+    this.resetOrderStages();
 
     switch (err.status) {
       case 400:
@@ -193,12 +282,27 @@ export class OrderPage implements OnInit, OnDestroy {
     setTimeout(() => {
       const errorElement = document.querySelector('.error-message');
       if (errorElement) {
-        errorElement.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
+        errorElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
         });
       }
     }, 100);
+  }
+
+  navigateToHome(): void {
+    if (this.autoRedirectTimer) {
+      clearInterval(this.autoRedirectTimer);
+      this.autoRedirectTimer = null;
+    }
+
+    if (this.completedOrder?.id) {
+      this.router.navigate(['/orders', this.completedOrder.id]);
+    } else {
+      this.router.navigate(['/'], {
+        queryParams: { orderSuccess: 'true' }
+      });
+    }
   }
 
   goBackToCart(): void {
@@ -212,13 +316,13 @@ export class OrderPage implements OnInit, OnDestroy {
   }
 
   getTotalPrice(): number {
-    return this.cartItems.reduce((sum, item) => 
+    return this.cartItems.reduce((sum, item) =>
       sum + (item.quantity * item.unitPrice), 0
     );
   }
 
   getTotalQuantity(): number {
-    return this.cartItems.reduce((sum, item) => 
+    return this.cartItems.reduce((sum, item) =>
       sum + item.quantity, 0
     );
   }
@@ -240,9 +344,22 @@ export class OrderPage implements OnInit, OnDestroy {
   }
 
   get canSubmitOrder(): boolean {
-    return !this.isSubmitting && 
-           this.shippingAddress.trim().length >= 10 && 
-           this.cartItems.length > 0 && 
-           !this.hasUnavailableItems;
+    return !this.isSubmitting &&
+      this.shippingAddress.trim().length >= 10 &&
+      this.cartItems.length > 0 &&
+      !this.hasUnavailableItems;
+  }
+
+  getStageIcon(stage: OrderStage): string {
+    switch (stage.id) {
+      case 'validating':
+        return stage.status === 'completed' ? 'check-circle' : 'shield';
+      case 'processing':
+        return stage.status === 'completed' ? 'check-circle' : 'shopping-cart';
+      case 'completing':
+        return stage.status === 'completed' ? 'check-circle' : 'package';
+      default:
+        return 'circle';
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { CreateOrderDto } from '../models/CreateOrderDto.model';
+import { CreateOrderDto } from '../models/create-order.dto';
 import { Observable } from 'rxjs';
 import { AuthService } from '../../user/services/auth.service';
 

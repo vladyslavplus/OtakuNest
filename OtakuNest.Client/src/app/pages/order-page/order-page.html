@@ -41,11 +41,83 @@
         </button>
     </div>
 
-    <div *ngIf="isSubmitting" class="loading-overlay">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <h3>Processing Your Order</h3>
-            <p>Please wait while we process your order...</p>
+    <div *ngIf="isSubmitting || isOrderCompleted" class="loading-overlay">
+        <div class="loading-content" [class.completed]="isOrderCompleted">
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" [style.width.%]="((currentStageIndex + 1) / orderStages.length) * 100"></div>
+                </div>
+            </div>
+
+            <div class="order-stages">
+                <div *ngFor="let stage of orderStages; let i = index" 
+                     class="stage-item" 
+                     [class.active]="stage.status === 'active'"
+                     [class.completed]="stage.status === 'completed'"
+                     [class.pending]="stage.status === 'pending'">
+                    
+                    <div class="stage-icon">
+                        <svg *ngIf="stage.id === 'validating' && stage.status !== 'completed'" 
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                        
+                        <svg *ngIf="stage.id === 'processing' && stage.status !== 'completed'" 
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <path d="M16 10a4 4 0 0 1-8 0" />
+                        </svg>
+                        
+                        <svg *ngIf="stage.id === 'completing' && stage.status !== 'completed'" 
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M21 8a2 2 0 0 0-1-1.73L12 2 4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73L12 22l8-4.27A2 2 0 0 0 21 16V8z" />
+                            <path d="M17 8L12 13 7 8" />
+                        </svg>
+                        
+                        <svg *ngIf="stage.status === 'completed'" 
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M9 12l2 2 4-4" />
+                            <circle cx="12" cy="12" r="10" />
+                        </svg>
+                        
+                    </div>
+                    
+                    <div class="stage-label">{{ stage.label }}</div>
+                </div>
+            </div>
+
+            <h3 *ngIf="!isOrderCompleted" class="loading-title">Processing Your Order</h3>
+            <h3 *ngIf="isOrderCompleted" class="success-title">
+                <svg class="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M9 12l2 2 4-4" />
+                    <circle cx="12" cy="12" r="10" />
+                </svg>
+                Order Successfully Created!
+            </h3>
+
+            <p *ngIf="!isOrderCompleted" class="loading-message">
+                Please wait while we process your order...
+            </p>
+            
+            <div *ngIf="isOrderCompleted" class="success-message">
+                <p>Your order has been successfully created and is being prepared for shipment.</p>
+                <p *ngIf="completedOrder?.id" class="order-id">Order ID: <strong>#{{ completedOrder?.id }}</strong></p>
+            </div>
+
+            <div *ngIf="isOrderCompleted" class="completion-actions">
+                <button class="btn-primary-large" (click)="navigateToHome()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9,22 9,12 15,12 15,22" />
+                    </svg>
+                    Continue Shopping
+                </button>
+                
+                <div class="auto-redirect-notice">
+                    Automatically redirecting in <strong>{{ autoRedirectCountdown }}</strong> seconds...
+                </div>
+            </div>
         </div>
     </div>
 
@@ -176,7 +248,6 @@
                 <div class="form-actions">
                     <button type="button" class="btn-secondary compact" (click)="goBackToCart()"
                         [disabled]="isSubmitting">
-
                         Back to Cart
                     </button>
                     <button type="submit" class="btn-primary compact"
