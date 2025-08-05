@@ -9,7 +9,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
 import { delay } from 'rxjs';
 import { RouterModule } from '@angular/router';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.model';
-import { ProductQueryParams } from '../../../features/product/models/query-params.model';
+import { ProductQueryParams } from '../../../features/product/models/product-query-params.model';
 
 @Component({
   selector: 'app-home-page',

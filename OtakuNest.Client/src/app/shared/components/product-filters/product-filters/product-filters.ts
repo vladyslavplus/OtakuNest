@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Output } from '@angular/core';
-import { ProductQueryParams } from '../../../../features/product/models/query-params.model';
+import { ProductQueryParams } from '../../../../features/product/models/product-query-params.model';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgxSliderModule, Options } from '@angular-slider/ngx-slider';

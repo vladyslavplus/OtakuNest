@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
 import { Product } from '../models/product.model';
-import { ProductQueryParams } from '../models/query-params.model';
+import { ProductQueryParams } from '../models/product-query-params.model';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.model';
 
 @Injectable({

@@ -6,7 +6,7 @@ import { ProductCard } from '../../shared/components/product-card/product-card';
 import { Product } from '../../features/product/models/product.model';
 import { PaginatedResult } from '../../core/pagination/paginated-result.model';
 import { ProductService } from '../../features/product/services/product.service';
-import { ProductQueryParams } from '../../features/product/models/query-params.model';
+import { ProductQueryParams } from '../../features/product/models/product-query-params.model';
 
 @Component({
   selector: 'app-products-page',
