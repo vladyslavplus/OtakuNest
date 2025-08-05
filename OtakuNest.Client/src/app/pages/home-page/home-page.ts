@@ -1,15 +1,15 @@
 import { Component, OnInit } from '@angular/core';
-import { Product } from '../../../features/product/models/product.model';
-import { ProductService } from '../../../features/product/services/product.service';
+import { Product } from '../../features/product/models/product.model';
+import { ProductService } from '../../features/product/services/product.service';
 import { CommonModule } from '@angular/common';
-import { HeroSection } from '../../../shared/components/hero-section/hero-section';
-import { CategoryFilter } from '../../../shared/components/category-filter/category-filter';
-import { ProductCard } from '../../../shared/components/product-card/product-card';
-import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
+import { HeroSection } from '../../shared/components/hero-section/hero-section';
+import { CategoryFilter } from '../../shared/components/category-filter/category-filter';
+import { ProductCard } from '../../shared/components/product-card/product-card';
+import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 import { delay } from 'rxjs';
 import { RouterModule } from '@angular/router';
-import { PaginatedResult } from '../../../core/pagination/paginated-result.model';
-import { ProductQueryParams } from '../../../features/product/models/product-query-params.model';
+import { PaginatedResult } from '../../core/pagination/paginated-result.model';
+import { ProductQueryParams } from '../../features/product/models/product-query-params.model';
 
 @Component({
   selector: 'app-home-page',
