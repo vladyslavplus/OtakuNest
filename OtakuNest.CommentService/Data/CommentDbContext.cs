@@ -15,14 +15,24 @@ namespace OtakuNest.CommentService.Data
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<Comment>()
+                .HasIndex(c => c.ParentCommentId);
+
+            modelBuilder.Entity<Comment>()
+                .HasIndex(c => c.ProductId);
+
+            modelBuilder.Entity<Comment>()
+                .HasIndex(c => c.UserId);
+
+
+            modelBuilder.Entity<Comment>()
                 .HasOne(c => c.ParentComment)
                 .WithMany(c => c.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
-                .OnDelete(DeleteBehavior.Restrict); 
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<CommentLike>()
                 .HasIndex(cl => new { cl.CommentId, cl.UserId })
-                .IsUnique(); 
+                .IsUnique();
         }
     }
 }

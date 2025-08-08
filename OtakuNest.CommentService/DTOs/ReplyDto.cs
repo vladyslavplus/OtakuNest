@@ -8,5 +8,6 @@
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public int LikesCount { get; set; }
+        public List<ReplyDto> Replies { get; set; } = new();
     }
 }
