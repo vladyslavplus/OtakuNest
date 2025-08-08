@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OtakuNest.CartService.DTOs;
-using OtakuNest.CartService.Extensions;
 using OtakuNest.CartService.Services;
+using OtakuNest.Common.Extensions;
 
 namespace OtakuNest.CartService.Controllers
 {

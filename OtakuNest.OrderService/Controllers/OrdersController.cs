@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using OtakuNest.Common.Extensions;
 using OtakuNest.Common.Helpers;
 using OtakuNest.OrderService.DTOs;
-using OtakuNest.OrderService.Extensions;
 using OtakuNest.OrderService.Parameters;
 using OtakuNest.OrderService.Services;
 

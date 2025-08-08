@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 
-namespace OtakuNest.CartService.Extensions
+namespace OtakuNest.Common.Extensions
 {
     public static class ClaimsPrincipalExtensions
     {

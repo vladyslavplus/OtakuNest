@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OtakuNest.CommentService.DTOs;
-using OtakuNest.CommentService.Extensions;
 using OtakuNest.CommentService.Services;
+using OtakuNest.Common.Extensions;
 
 namespace OtakuNest.CommentService.Controllers
 {
