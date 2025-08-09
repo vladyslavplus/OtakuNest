@@ -21,25 +21,28 @@ namespace OtakuNest.CommentService.Services
 
         public async Task<PagedList<CommentDto>> GetAllAsync(CommentParameters parameters, CancellationToken cancellationToken = default)
         {
-            var query = _context.Comments.AsQueryable();
+            if (parameters.ProductId == Guid.Empty)
+                throw new ArgumentException("ProductId must be provided");
 
-            if (parameters.ProductId != Guid.Empty)
-                query = query.Where(c => c.ProductId == parameters.ProductId);
-
-            if (parameters.ParentCommentId.HasValue)
-                query = query.Where(c => c.ParentCommentId == parameters.ParentCommentId.Value);
-            else
-                query = query.Where(c => c.ParentCommentId == null);
+            var rootCommentsQuery = _context.Comments
+                .Where(c => c.ProductId == parameters.ProductId && c.ParentCommentId == null)
+                .Include(c => c.Likes)
+                .AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(parameters.Content))
             {
                 var content = parameters.Content.Trim();
-                query = query.Where(c => c.Content.Contains(content));
+                rootCommentsQuery = rootCommentsQuery.Where(c => c.Content.Contains(content));
             }
 
-            query = _sortHelper.ApplySort(query, parameters.OrderBy);
+            rootCommentsQuery = _sortHelper.ApplySort(rootCommentsQuery, parameters.OrderBy);
 
-            var pagedComments = await PagedList<Comment>.ToPagedListAsync(query.AsNoTracking(), parameters.PageNumber, parameters.PageSize, cancellationToken);
+            var totalRootCount = await rootCommentsQuery.CountAsync(cancellationToken);
+
+            var rootComments = await rootCommentsQuery
+                .Skip((parameters.PageNumber - 1) * parameters.PageSize)
+                .Take(parameters.PageSize)
+                .ToListAsync(cancellationToken);
 
             var allComments = await _context.Comments
                 .Where(c => c.ProductId == parameters.ProductId)
@@ -47,15 +50,13 @@ namespace OtakuNest.CommentService.Services
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            var dtos = pagedComments.Select(c => MapCommentToDto(c, allComments)).ToList();
+            var dtos = rootComments.Select(c => MapCommentToDto(c, allComments)).ToList();
 
-            var pagedDtos = new PagedList<CommentDto>(
+            return new PagedList<CommentDto>(
                 dtos,
-                pagedComments.TotalCount,
-                pagedComments.CurrentPage,
-                pagedComments.PageSize);
-
-            return pagedDtos;
+                totalRootCount,
+                parameters.PageNumber,
+                parameters.PageSize);
         }
 
         public async Task<CommentDto?> GetByIdAsync(Guid commentId, CancellationToken cancellationToken = default)
@@ -110,7 +111,7 @@ namespace OtakuNest.CommentService.Services
         {
             var parent = await _context.Comments
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == dto.ParentCommentId, cancellationToken);
+                .FirstOrDefaultAsync(c => c.Id == dto.ParentCommentId && c.ProductId == dto.ProductId, cancellationToken);
 
             if (parent == null)
                 throw new KeyNotFoundException("Parent comment not found");
@@ -148,6 +149,9 @@ namespace OtakuNest.CommentService.Services
             if (comment == null)
                 return false;
 
+            if (string.IsNullOrWhiteSpace(dto.Content))
+                throw new ArgumentException("Comment content cannot be empty");
+
             comment.Content = dto.Content.Trim();
             comment.UpdatedAt = DateTime.UtcNow;
 
@@ -164,6 +168,7 @@ namespace OtakuNest.CommentService.Services
                 return false;
 
             var allComments = await _context.Comments
+                .Where(c => c.ProductId == comment.ProductId)
                 .ToListAsync(cancellationToken);
 
             var toDelete = GetChildrenRecursive(allComments, commentId);
@@ -210,7 +215,7 @@ namespace OtakuNest.CommentService.Services
 
         private CommentDto MapCommentToDto(Comment comment, List<Comment> allComments)
         {
-            var replies = allComments
+            var directReplies = allComments
                 .Where(c => c.ParentCommentId == comment.Id)
                 .OrderBy(c => c.CreatedAt)
                 .ToList();
@@ -225,7 +230,7 @@ namespace OtakuNest.CommentService.Services
                 UpdatedAt = comment.UpdatedAt,
                 ParentCommentId = comment.ParentCommentId,
                 LikesCount = comment.Likes?.Count ?? 0,
-                Replies = replies.Select(c => MapCommentToReplyDto(c, allComments)).ToList()
+                Replies = directReplies.Select(c => MapCommentToReplyDto(c, allComments)).ToList()
             };
         }
     }
