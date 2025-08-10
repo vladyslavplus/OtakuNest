@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using OtakuNest.CommentService.Data;
 using OtakuNest.CommentService.Services;
+using OtakuNest.Contracts;
 
 namespace OtakuNest.CommentService.Extensions
 {
@@ -18,6 +19,8 @@ namespace OtakuNest.CommentService.Extensions
         {
             services.AddMassTransit(x =>
             {
+                x.AddRequestClient<GetUsersByIdsRequest>();
+
                 x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host("rabbitmq", "/", h =>

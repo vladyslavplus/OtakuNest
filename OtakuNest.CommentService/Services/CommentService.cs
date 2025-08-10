@@ -1,10 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using OtakuNest.CommentService.Data;
 using OtakuNest.CommentService.DTOs;
 using OtakuNest.CommentService.Models;
 using OtakuNest.CommentService.Parameters;
 using OtakuNest.Common.Helpers;
 using OtakuNest.Common.Interfaces;
+using OtakuNest.Contracts;
 
 namespace OtakuNest.CommentService.Services
 {
@@ -12,11 +14,13 @@ namespace OtakuNest.CommentService.Services
     {
         private readonly CommentDbContext _context;
         private readonly ISortHelper<Comment> _sortHelper;
+        private readonly IRequestClient<GetUsersByIdsRequest> _userClient;
 
-        public CommentService(CommentDbContext context, ISortHelper<Comment> sortHelper)
+        public CommentService(CommentDbContext context, ISortHelper<Comment> sortHelper, IRequestClient<GetUsersByIdsRequest> userClient)
         {
             _context = context;
             _sortHelper = sortHelper;
+            _userClient = userClient;
         }
 
         public async Task<PagedList<CommentDto>> GetAllAsync(CommentParameters parameters, CancellationToken cancellationToken = default)
@@ -50,7 +54,9 @@ namespace OtakuNest.CommentService.Services
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            var dtos = rootComments.Select(c => MapCommentToDto(c, allComments)).ToList();
+            var userMap = await GetUserMapAsync(allComments, cancellationToken);
+
+            var dtos = rootComments.Select(c => MapCommentToDto(c, allComments, userMap)).ToList();
 
             return new PagedList<CommentDto>(
                 dtos,
@@ -75,7 +81,9 @@ namespace OtakuNest.CommentService.Services
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            return MapCommentToDto(comment, allComments);
+            var userMap = await GetUserMapAsync(allComments, cancellationToken);
+
+            return MapCommentToDto(comment, allComments, userMap);
         }
 
         public async Task<CommentDto> CreateAsync(CreateCommentDto dto, Guid userId, CancellationToken cancellationToken = default)
@@ -138,7 +146,9 @@ namespace OtakuNest.CommentService.Services
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-            return MapCommentToDto(reply, allComments);
+            var userMap = await GetUserMapAsync(allComments, cancellationToken);
+
+            return MapCommentToDto(reply, allComments, userMap);
         }
 
         public async Task<bool> UpdateAsync(Guid commentId, Guid userId, UpdateCommentDto dto, CancellationToken cancellationToken = default)
@@ -194,7 +204,7 @@ namespace OtakuNest.CommentService.Services
             return result;
         }
 
-        private ReplyDto MapCommentToReplyDto(Comment comment, List<Comment> allComments)
+        private ReplyDto MapCommentToReplyDto(Comment comment, List<Comment> allComments, Dictionary<Guid, string> userMap)
         {
             var children = allComments
                 .Where(c => c.ParentCommentId == comment.Id)
@@ -205,15 +215,16 @@ namespace OtakuNest.CommentService.Services
             {
                 Id = comment.Id,
                 UserId = comment.UserId,
+                UserName = userMap.TryGetValue(comment.UserId, out var name) ? name : "Unknown",
                 Content = comment.Content,
                 CreatedAt = comment.CreatedAt,
                 UpdatedAt = comment.UpdatedAt,
                 LikesCount = comment.Likes?.Count ?? 0,
-                Replies = children.Select(c => MapCommentToReplyDto(c, allComments)).ToList()
+                Replies = children.Select(c => MapCommentToReplyDto(c, allComments, userMap)).ToList()
             };
         }
 
-        private CommentDto MapCommentToDto(Comment comment, List<Comment> allComments)
+        private CommentDto MapCommentToDto(Comment comment, List<Comment> allComments, Dictionary<Guid, string> userMap)
         {
             var directReplies = allComments
                 .Where(c => c.ParentCommentId == comment.Id)
@@ -225,13 +236,26 @@ namespace OtakuNest.CommentService.Services
                 Id = comment.Id,
                 ProductId = comment.ProductId,
                 UserId = comment.UserId,
+                UserName = userMap.TryGetValue(comment.UserId, out var name) ? name : "Unknown",
                 Content = comment.Content,
                 CreatedAt = comment.CreatedAt,
                 UpdatedAt = comment.UpdatedAt,
                 ParentCommentId = comment.ParentCommentId,
                 LikesCount = comment.Likes?.Count ?? 0,
-                Replies = directReplies.Select(c => MapCommentToReplyDto(c, allComments)).ToList()
+                Replies = directReplies.Select(c => MapCommentToReplyDto(c, allComments, userMap)).ToList()
             };
+        }
+
+        private async Task<Dictionary<Guid, string>> GetUserMapAsync(IEnumerable<Comment> comments, CancellationToken cancellationToken)
+        {
+            var userIds = comments.Select(c => c.UserId).Distinct().ToList();
+            if (!userIds.Any())
+                return new Dictionary<Guid, string>();
+
+            var response = await _userClient.GetResponse<GetUsersByIdsResponse>(
+                new GetUsersByIdsRequest(userIds), cancellationToken);
+
+            return response.Message.Users.ToDictionary(u => u.Id, u => u.UserName);
         }
     }
 }
