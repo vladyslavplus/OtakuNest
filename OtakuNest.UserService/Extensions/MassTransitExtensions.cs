@@ -1,4 +1,5 @@
 ﻿using MassTransit;
+using OtakuNest.UserService.Consumers;
 
 namespace OtakuNest.UserService.Extensions
 {
@@ -8,12 +9,19 @@ namespace OtakuNest.UserService.Extensions
         {
             services.AddMassTransit(x =>
             {
-                x.UsingRabbitMq((ctx, cfg) =>
+                x.AddConsumer<GetUsersByIdsConsumer>();
+
+                x.UsingRabbitMq((context, cfg) =>
                 {
                     cfg.Host("rabbitmq", "/", h =>
                     {
                         h.Username("guest");
                         h.Password("guest");
+                    });
+
+                    cfg.ReceiveEndpoint("get-users-by-ids-queue", e =>
+                    {
+                        e.ConfigureConsumer<GetUsersByIdsConsumer>(context);
                     });
                 });
             });
