@@ -7,11 +7,13 @@ import { CommonModule } from '@angular/common';
 import { Subject, takeUntil, Subscription } from 'rxjs';
 import { RateLimitService } from '../../core/limiting/services/rate-limit.service';
 import { HttpErrorResponse } from '@angular/common/http';
+import { CommentSection } from '../../shared/components/comment-section/comment-section'; 
+import { AuthService } from '../../features/user/services/auth.service';
 
 @Component({
   selector: 'app-product-detail-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CommentSection], 
   templateUrl: './product-detail-page.html',
   styleUrl: './product-detail-page.css'
 })
@@ -22,6 +24,9 @@ export class ProductDetailPage implements OnInit, OnDestroy {
   isAddingToCart = false;
   addToCartSuccess = false;
   isToastExiting = false;
+
+  isAuthenticated = false;
+  currentUserId?: string;
 
   isRateLimited = false;
   rateLimitWarning = false;
@@ -36,25 +41,33 @@ export class ProductDetailPage implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private productService: ProductService,
     private cartService: CartService,
+    private authService: AuthService, 
     protected rateLimitService: RateLimitService
   ) {}
 
   ngOnInit(): void {
     this.subscribeToRateLimit();
-
+    this.subscribeToAuth();
+    
+    if (this.authService.isAuthenticated()) {
+      const userInfo = this.authService.getUserInfo();
+      this.currentUserId = userInfo?.userId;
+      this.isAuthenticated = true;
+    }
+  
     const productId = this.route.snapshot.paramMap.get('id');
     if (!productId) {
       this.error = 'Invalid product ID';
       this.isLoading = false;
       return;
     }
-
+  
     if (!this.rateLimitService.canMakeRequest()) {
       console.warn('Request blocked by rate limiter');
       this.isLoading = false;
       return;
     }
-
+  
     this.productService.getProductById(productId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -66,7 +79,7 @@ export class ProductDetailPage implements OnInit, OnDestroy {
         error: (err: HttpErrorResponse) => {
           console.error('Failed to load product', err);
           this.isLoading = false;
-
+  
           if (err.status === 429) {
             console.warn('Rate limit hit on product load');
           } else {
@@ -85,6 +98,21 @@ export class ProductDetailPage implements OnInit, OnDestroy {
     }
 
     this.rateLimitSubscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  private subscribeToAuth(): void {
+    this.authService.authStatus$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(isAuth => {
+        this.isAuthenticated = isAuth;
+
+        if (isAuth) {
+          const userInfo = this.authService.getUserInfo();
+          this.currentUserId = userInfo?.userId;
+        } else {
+          this.currentUserId = undefined;
+        }
+      });
   }
 
   private subscribeToRateLimit(): void {

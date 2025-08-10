@@ -1,130 +1,160 @@
 <div class="product-detail-container">
-  <div *ngIf="isLoading" class="loading-container">
-    <div class="loading-spinner">⏳</div>
-    <p>Loading product...</p>
-  </div>
- 
-  <div *ngIf="error && !isLoading" class="error-container">
-    <div class="error-icon">❌</div>
-    <p>{{ error }}</p>
-    <button class="retry-btn" (click)="clearError()">Try Again</button>
-  </div>
- 
-  <div *ngIf="product && !isLoading" class="product-detail">
-    <div class="product-images">
-      <div class="main-image">
-        <img
-          [src]="product.imageUrl"
-          [alt]="product.name"
-          (error)="onImageError($event)"
-          class="product-image"
-        />
-        <div class="no-image-placeholder" style="display: none;">
-          <div class="placeholder-icon">📦</div>
-          <span>No Image</span>
-        </div>
-      </div>
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="loading-spinner">⏳</div>
+      <p>Loading product...</p>
     </div>
-   
-    <div class="product-info">
-      <div class="product-header">
-        <h1 class="product-title">{{ product.name }}</h1>
-        <div class="product-meta">
-          <span class="product-sku">SKU: {{ product.sku }}</span>
-          <div class="product-rating">
-            <span class="rating-stars">⭐</span>
-            <span class="rating-value">{{ product.rating }}/5</span>
+  }
+ 
+  @if (error && !isLoading) {
+    <div class="error-container">
+      <div class="error-icon">❌</div>
+      <p>{{ error }}</p>
+      <button class="retry-btn" (click)="clearError()">Try Again</button>
+    </div>
+  }
+ 
+  @if (product && !isLoading) {
+    <div class="product-detail">
+      <div class="product-images">
+        <div class="main-image">
+          <img
+            [src]="product.imageUrl"
+            [alt]="product.name"
+            (error)="onImageError($event)"
+            class="product-image"
+          />
+          <div class="no-image-placeholder" style="display: none;">
+            <div class="placeholder-icon">📦</div>
+            <span>No Image</span>
           </div>
         </div>
       </div>
      
-      <div class="product-pricing">
-        <div class="price-container">
-          <div class="price-section">
-            <span class="current-price">${{ product.price }}</span>
-            <span *ngIf="product.discount > 0" class="original-price">
-              ${{ getOriginalPrice() }}
+      <div class="product-info">
+        <div class="product-header">
+          <h1 class="product-title">{{ product.name }}</h1>
+          <div class="product-meta">
+            <span class="product-sku">SKU: {{ product.sku }}</span>
+            <div class="product-rating">
+              <span class="rating-stars">⭐</span>
+              <span class="rating-value">{{ product.rating }}/5</span>
+            </div>
+          </div>
+        </div>
+       
+        <div class="product-pricing">
+          <div class="price-container">
+            <div class="price-section">
+              <span class="current-price">${{ product.price }}</span>
+              @if (product.discount > 0) {
+                <span class="original-price">
+                  ${{ getOriginalPrice() }}
+                </span>
+              }
+            </div>
+            @if (product.discount > 0) {
+              <span class="discount-badge">
+                -{{ product.discount }}% OFF
+              </span>
+            }
+          </div>
+         
+          <div class="stock-info">
+            <span class="stock-status" [ngClass]="getStockStatusClass()">
+              {{ getStockMessage() }}
             </span>
           </div>
-          <span *ngIf="product.discount > 0" class="discount-badge">
-            -{{ product.discount }}% OFF
-          </span>
         </div>
        
-        <div class="stock-info">
-          <span class="stock-status" [ngClass]="getStockStatusClass()">
-            {{ getStockMessage() }}
-          </span>
-        </div>
-      </div>
-     
-      <div class="product-description">
-        <h3>Description</h3>
-        <p>{{ product.description }}</p>
-      </div>
-     
-      <div class="product-details">
-        <div class="detail-item">
-          <span class="detail-label">Category:</span>
-          <span class="detail-value">{{ product.category }}</span>
-        </div>
-      </div>
-     
-      <div class="product-actions">
-        <div *ngIf="(rateLimitWarning && !isRateLimited) || getRemainingRequests() <= 5" 
-             class="rate-limit-warning" 
-             (click)="clearRateLimitWarning()">
-          ⚠️ You're making requests quickly. Slow down to avoid temporary restrictions.
-          <small>({{ getRemainingRequests() }} requests remaining)</small>
-        </div>
-
-        <div *ngIf="isRateLimited || getRemainingRequests() <= 0" class="rate-limit-block">
-          🚫 Too many requests! Please wait {{ formatTime(rateLimitTimeRemaining) }} before making more changes.
-          <small>This helps prevent server overload.</small>
-        </div>
-
-        <div *ngIf="error && !rateLimitErrorMessage" class="error-message" (click)="clearError()">
-          ❌ {{ error }}
+        <div class="product-description">
+          <h3>Description</h3>
+          <p>{{ product.description }}</p>
         </div>
        
-        <button
-          class="add-to-cart-btn"
-          [disabled]="!canAddToCart()"
-          (click)="addToCart()"
-        >
-          <span *ngIf="isAddingToCart">⏳ Adding...</span>
-          <span *ngIf="!isAddingToCart">🛒 Add to Cart</span>
-        </button>
-
-        <div *ngIf="rateLimitWarning || isRateLimited" class="rate-limit-info">
-          <small>
-            Requests remaining: {{ getRemainingRequests() }} | 
-            Status: {{ isRateLimited ? 'Blocked' : 'Active' }}
-            <span *ngIf="isRateLimited"> | Time left: {{ formatTime(rateLimitTimeRemaining) }}</span>
-          </small>
+        <div class="product-details">
+          <div class="detail-item">
+            <span class="detail-label">Category:</span>
+            <span class="detail-value">{{ product.category }}</span>
+          </div>
         </div>
        
-        <div class="action-buttons">
-          <button class="wishlist-btn" 
-                  [disabled]="isRateLimited || !rateLimitService.canMakeRequest()">
-            ❤️ Add to Wishlist
+        <div class="product-actions">
+          @if ((rateLimitWarning && !isRateLimited) || getRemainingRequests() <= 5) {
+            <div class="rate-limit-warning" (click)="clearRateLimitWarning()">
+              ⚠️ You're making requests quickly. Slow down to avoid temporary restrictions.
+              <small>({{ getRemainingRequests() }} requests remaining)</small>
+            </div>
+          }
+
+          @if (isRateLimited || getRemainingRequests() <= 0) {
+            <div class="rate-limit-block">
+              🚫 Too many requests! Please wait {{ formatTime(rateLimitTimeRemaining) }} before making more changes.
+              <small>This helps prevent server overload.</small>
+            </div>
+          }
+
+          @if (error && !rateLimitErrorMessage) {
+            <div class="error-message" (click)="clearError()">
+              ❌ {{ error }}
+            </div>
+          }
+         
+          <button
+            class="add-to-cart-btn"
+            [disabled]="!canAddToCart()"
+            (click)="addToCart()"
+          >
+            @if (isAddingToCart) {
+              <span>⏳ Adding...</span>
+            } @else {
+              <span>🛒 Add to Cart</span>
+            }
           </button>
-          <button class="share-btn" 
-                  [disabled]="isRateLimited || !rateLimitService.canMakeRequest()">
-            📤 Share
-          </button>
+
+          @if (rateLimitWarning || isRateLimited) {
+            <div class="rate-limit-info">
+              <small>
+                Requests remaining: {{ getRemainingRequests() }} | 
+                Status: {{ isRateLimited ? 'Blocked' : 'Active' }}
+                @if (isRateLimited) {
+                  <span> | Time left: {{ formatTime(rateLimitTimeRemaining) }}</span>
+                }
+              </small>
+            </div>
+          }
+         
+          <div class="action-buttons">
+            <button class="wishlist-btn" 
+                    [disabled]="isRateLimited || !rateLimitService.canMakeRequest()">
+              ❤️ Add to Wishlist
+            </button>
+            <button class="share-btn" 
+                    [disabled]="isRateLimited || !rateLimitService.canMakeRequest()">
+              📤 Share
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+
+    <div class="product-comments-section">
+      <app-comment-section
+        [productId]="product.id"
+        [currentUserId]="currentUserId"
+        [isAuthenticated]="isAuthenticated">
+      </app-comment-section>
+    </div>
+  }
  
-  <div *ngIf="addToCartSuccess"
-       class="success-toast"
-       [class.toast-enter]="!isToastExiting"
-       [class.toast-exit]="isToastExiting">
-    <div class="toast-content">
-      <span class="toast-icon">✅</span>
-      <span class="toast-text">Added to cart!</span>
+  @if (addToCartSuccess) {
+    <div class="success-toast"
+         [class.toast-enter]="!isToastExiting"
+         [class.toast-exit]="isToastExiting">
+      <div class="toast-content">
+        <span class="toast-icon">✅</span>
+        <span class="toast-text">Added to cart!</span>
+      </div>
     </div>
-  </div>
+  }
 </div>

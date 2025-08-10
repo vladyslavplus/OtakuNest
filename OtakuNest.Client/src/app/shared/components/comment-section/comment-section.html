@@ -1,0 +1,334 @@
+<div class="comments-section">
+    <div class="comments-header">
+        <h3 class="comments-title">
+            Comments ({{ totalComments }})
+        </h3>
+    </div>
+
+    @if (isAuthenticated) {
+    <div class="main-comment-form">
+        <form [formGroup]="mainCommentForm" (ngSubmit)="submitMainComment()">
+            <div class="form-group">
+                <textarea formControlName="content" class="comment-textarea" placeholder="Leave your comment..."
+                    rows="3">
+              </textarea>
+                @if (mainCommentForm.get('content')?.touched && mainCommentForm.get('content')?.errors) {
+                <div class="form-error">
+                    @if (mainCommentForm.get('content')?.errors?.['required']) {
+                    <span>Comment cannot be empty</span>
+                    }
+                    @if (mainCommentForm.get('content')?.errors?.['maxlength']) {
+                    <span>Maximum comment length is 1000 characters</span>
+                    }
+                </div>
+                }
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="submit-comment-btn" [disabled]="!mainCommentForm.valid || isSubmitting">
+                    @if (!isSubmitting) {
+                    <span>Publish</span>
+                    } @else {
+                    <span class="loading-text">
+                        <i class="loading-spinner">⟳</i>
+                        Publishing...
+                    </span>
+                    }
+                </button>
+            </div>
+        </form>
+    </div>
+    }
+
+    @if (!isAuthenticated) {
+    <div class="login-prompt">
+        <p>Please log in to leave a comment</p>
+    </div>
+    }
+
+    @if (isLoading && comments.length === 0) {
+    <div class="loading-container">
+        <div class="loading-spinner">⟳</div>
+        <p>Loading comments...</p>
+    </div>
+    }
+
+    @if (comments.length > 0) {
+    <div class="comments-list">
+        @for (comment of comments; track comment.id) {
+        <div class="comment-item">
+            <div class="comment-content">
+                <div class="comment-header">
+                    <div class="comment-meta">
+                        <span class="comment-author">{{ comment.userName || "Unknown" }}</span>
+                        <span class="comment-date">{{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}</span>
+                        @if (comment.updatedAt && comment.updatedAt !== comment.createdAt) {
+                        <span class="comment-edited">(edited)</span>
+                        }
+                    </div>
+                    @if (isAuthenticated) {
+                    <div class="comment-actions">
+                        @if (!isActiveReply(comment.id)) {
+                        <button class="action-btn reply-btn" (click)="showReplyForm(comment.id)">
+                            Reply
+                        </button>
+                        }
+                        @if (canEditComment(comment) && !isActiveEdit(comment.id)) {
+                        <button class="action-btn edit-btn" (click)="startEdit(comment)">
+                            <svg class="action-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                        </button>
+                        }
+                        @if (canDeleteComment(comment)) {
+                        <button class="action-btn delete-btn" (click)="deleteComment(comment.id)">
+                            <svg class="action-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        }
+                    </div>
+                    }
+                </div>
+
+                @if (isActiveEdit(comment.id)) {
+                <div class="edit-form">
+                    <form [formGroup]="getEditForm(comment.id)!" (ngSubmit)="submitEdit(comment.id)">
+                        <div class="form-group">
+                            <textarea formControlName="content" class="comment-textarea" rows="3">
+                        </textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="save-btn"
+                                [disabled]="!getEditForm(comment.id)?.valid || isSubmitting">
+                                Save
+                            </button>
+                            <button type="button" class="cancel-btn" (click)="cancelEdit(comment.id)">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                }
+
+                @if (!isActiveEdit(comment.id)) {
+                <div class="comment-text">
+                    {{ comment.content }}
+                </div>
+                }
+
+                <div class="comment-stats">
+                    @if (isAuthenticated) {
+                    <button class="like-btn" (click)="toggleLike(comment.id)"
+                        [class.liked]="getLikeState(comment.id).isLiked"
+                        [disabled]="getLikeState(comment.id).isLoading">
+                        @if (getLikeState(comment.id).isLoading) {
+                        <i class="loading-spinner">⟳</i>
+                        } @else {
+                        <i class="heart-icon" [class.filled]="getLikeState(comment.id).isLiked">♥</i>
+                        }
+                        <span class="likes-count">{{ getLikeState(comment.id).likesCount }}</span>
+                    </button>
+                    } @else {
+                    <span class="likes-count-readonly">
+                        <i class="heart-icon">♥</i>
+                        {{ getLikeState(comment.id).likesCount }}
+                    </span>
+                    }
+
+                    @if (comment.replies && comment.replies.length > 0) {
+                    <button class="replies-toggle" (click)="toggleReplies(comment.id)">
+                        @if (!isRepliesExpanded(comment.id)) {
+                        <span>Show replies ({{ comment.replies.length }})</span>
+                        } @else {
+                        <span>Hide replies</span>
+                        }
+                    </button>
+                    }
+                </div>
+            </div>
+
+            @if (isActiveReply(comment.id)) {
+            <div class="reply-form">
+                <form [formGroup]="getReplyForm(comment.id)!" (ngSubmit)="submitReply(comment.id)">
+                    <div class="form-group">
+                        <textarea formControlName="content" class="comment-textarea reply-textarea"
+                            placeholder="Your reply..." rows="2">
+                      </textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="submit-reply-btn"
+                            [disabled]="!getReplyForm(comment.id)?.valid || isSubmitting">
+                            Reply
+                        </button>
+                        <button type="button" class="cancel-btn" (click)="hideReplyForm()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+            }
+
+            @if (isRepliesExpanded(comment.id) && comment.replies && comment.replies.length > 0) {
+            <div class="replies-container">
+                <ng-container
+                    *ngTemplateOutlet="replyTemplate; context: { $implicit: comment.replies, level: 1 }"></ng-container>
+            </div>
+            }
+        </div>
+        }
+    </div>
+    }
+
+    <ng-template #replyTemplate let-replies let-level="level">
+        @for (reply of replies; track reply.id) {
+        <div class="reply-item" [class]="'reply-level-' + level">
+            <div class="reply-content">
+                <div class="reply-header">
+                    <div class="reply-meta">
+                        <span class="reply-author"> {{ reply.userName || "Unknown" }}</span>
+                        <span class="reply-date">{{ reply.createdAt | date:'dd.MM.yyyy HH:mm' }}</span>
+                        @if (reply.updatedAt && reply.updatedAt !== reply.createdAt) {
+                        <span class="reply-edited">(edited)</span>
+                        }
+                    </div>
+                    @if (isAuthenticated) {
+                    <div class="reply-actions">
+                        @if (!isActiveReply(reply.id)) {
+                        <button class="action-btn reply-btn" (click)="showReplyForm(reply.id)">
+                            Reply
+                        </button>
+                        }
+                        @if (canEditComment(reply) && !isActiveEdit(reply.id)) {
+                        <button class="action-btn edit-btn" (click)="startEdit(reply)">
+                            <svg class="action-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                        </button>
+                        }
+                        @if (canDeleteComment(reply)) {
+                        <button class="action-btn delete-btn" (click)="deleteComment(reply.id)">
+                            <svg class="action-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        }
+                    </div>
+                    }
+                </div>
+
+                @if (isActiveEdit(reply.id)) {
+                <div class="edit-form">
+                    <form [formGroup]="getEditForm(reply.id)!" (ngSubmit)="submitEdit(reply.id)">
+                        <div class="form-group">
+                            <textarea formControlName="content" class="comment-textarea" rows="2">
+                    </textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="save-btn"
+                                [disabled]="!getEditForm(reply.id)?.valid || isSubmitting">
+                                Save
+                            </button>
+                            <button type="button" class="cancel-btn" (click)="cancelEdit(reply.id)">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                }
+
+                @if (!isActiveEdit(reply.id)) {
+                <div class="reply-text">
+                    {{ reply.content }}
+                </div>
+                }
+
+                <div class="reply-stats">
+                    @if (isAuthenticated) {
+                    <button class="like-btn reply-like-btn" (click)="toggleLike(reply.id)"
+                        [class.liked]="getLikeState(reply.id).isLiked" [disabled]="getLikeState(reply.id).isLoading">
+                        @if (getLikeState(reply.id).isLoading) {
+                        <i class="loading-spinner">⟳</i>
+                        } @else {
+                        <i class="heart-icon" [class.filled]="getLikeState(reply.id).isLiked">♥</i>
+                        }
+                        <span class="likes-count">{{ getLikeState(reply.id).likesCount }}</span>
+                    </button>
+                    } @else {
+                    <span class="likes-count-readonly">
+                        <i class="heart-icon">♥</i>
+                        {{ getLikeState(reply.id).likesCount }}
+                    </span>
+                    }
+
+                    @if (hasReplies(reply)) {
+                    <button class="replies-toggle" (click)="toggleReplies(reply.id)">
+                        @if (!isRepliesExpanded(reply.id)) {
+                        <span>Show replies ({{ getRepliesCount(reply) }})</span>
+                        } @else {
+                        <span>Hide replies</span>
+                        }
+                    </button>
+                    }
+                </div>
+            </div>
+
+            @if (isActiveReply(reply.id)) {
+            <div class="reply-form nested-reply-form">
+                <form [formGroup]="getReplyForm(reply.id)!" (ngSubmit)="submitReply(reply.id)">
+                    <div class="form-group">
+                        <textarea formControlName="content" class="comment-textarea reply-textarea"
+                            placeholder="Your reply..." rows="2">
+                  </textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="submit-reply-btn"
+                            [disabled]="!getReplyForm(reply.id)?.valid || isSubmitting">
+                            Reply
+                        </button>
+                        <button type="button" class="cancel-btn" (click)="hideReplyForm()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+            }
+
+            @if (isRepliesExpanded(reply.id) && hasReplies(reply)) {
+            <div class="nested-replies">
+                <ng-container
+                    *ngTemplateOutlet="replyTemplate; context: { $implicit: reply.replies, level: level + 1 }"></ng-container>
+            </div>
+            }
+        </div>
+        }
+    </ng-template>
+
+    @if (hasMoreComments) {
+    <div class="load-more-container">
+        <button class="load-more-btn" (click)="loadMoreComments()" [disabled]="isLoading">
+            @if (!isLoading) {
+            <span>Load more</span>
+            } @else {
+            <span>
+                <i class="loading-spinner">⟳</i>
+                Loading...
+            </span>
+            }
+        </button>
+    </div>
+    }
+
+    @if (comments.length === 0 && !isLoading) {
+    <div class="empty-state">
+        <div class="empty-icon">💬</div>
+        <h4>No comments yet</h4>
+        <p>Be the first to leave a comment!</p>
+    </div>
+    }
+</div>
