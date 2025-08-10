@@ -163,4 +163,16 @@ export class AuthService {
       return false;
     }
   }
+
+  getCurrentUserName(): string | null {
+    const userInfo = this.getUserInfo();
+    if (!userInfo) return null;
+  
+    return (
+      userInfo['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ||
+      userInfo['unique_name'] ||
+      userInfo['name'] ||
+      null
+    );
+  }
 }
