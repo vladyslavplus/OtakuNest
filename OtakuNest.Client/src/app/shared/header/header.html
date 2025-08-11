@@ -75,9 +75,9 @@
 
   <div class="mobile-menu" [class.active]="isMobileMenuOpen" (click)="onMobileMenuClick($event)">
     <ul class="mobile-nav-menu">
-      <li><a href="#figures" (click)="closeMobileMenu()">Figures</a></li>
-      <li><a href="#posters" (click)="closeMobileMenu()">Posters</a></li>
-      <li><a href="#clothes" (click)="closeMobileMenu()">Clothing</a></li>
+      <li><a (click)="navigateToCategory('Figures'); closeMobileMenu()">Figures</a></li>
+      <li><a (click)="navigateToCategory('Posters'); closeMobileMenu()">Posters</a></li>
+      <li><a (click)="navigateToCategory('Clothing'); closeMobileMenu()">Clothing</a></li>
       <li><a [routerLink]="['/products']" (click)="closeMobileMenu()">More</a></li>
     </ul>
   </div>
