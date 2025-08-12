@@ -138,6 +138,17 @@ public class ProductService : IProductService
         product.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
+        await _publishEndpoint.Publish(new ProductUpdatedEvent(
+            product.Id,
+            product.Name,
+            product.Price,
+            product.SKU,
+            product.Category,
+            product.Quantity,
+            product.IsAvailable,
+            product.Discount,
+            product.UpdatedAt), cancellationToken);
+
         return true;
     }
 
@@ -148,6 +159,7 @@ public class ProductService : IProductService
 
         _context.Products.Remove(product);
         await _context.SaveChangesAsync(cancellationToken);
+        await _publishEndpoint.Publish(new ProductDeletedEvent(product.Id), cancellationToken);
         return true;
     }
 
