@@ -1,4 +1,172 @@
 services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345678
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+
+  elasticsearch:
+    image: elasticsearch:8.15.0
+    container_name: els
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"\\(green\\|yellow\\)\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  productservice:
+    build:
+      context: .
+      dockerfile: ./OtakuNest.ProductService/Dockerfile
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-productservice-db;
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  userservice:
+    build:
+      context: .
+      dockerfile: ./OtakuNest.UserService/Dockerfile
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-userservice-db;
+      - Jwt__Key=QmJ0zLVzKn6hw4IcszPgQY2vDjJvYqVztuI4bq1+qk2ZCXR4DKZrGhZfrs0+NbyT
+      - Jwt__Issuer=OtakuNest.UserService
+      - Jwt__Audience=OtakuNest.Client
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cartservice:
+    build:
+      context: .
+      dockerfile: ./OtakuNest.CartService/Dockerfile
+    ports:
+      - "5003:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-cartservice-db;
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  orderservice:
+    build:
+      context: .
+      dockerfile: ./OtakuNest.OrderService/Dockerfile
+    ports:
+      - "5004:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-orderservice-db;
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  commentservice:
+    build:
+      context: .
+      dockerfile: ./OtakuNest.CommentService/Dockerfile
+    ports:
+      - "5005:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-commentservice-db;
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  searchservice:
+    build:
+      context: .
+      dockerfile: ./OtakuNest.SearchService/Dockerfile
+    ports:
+      - "5006:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Elasticsearch__Uri=http://elasticsearch:9200
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   gateway:
     build:
       context: .
@@ -16,115 +184,21 @@ services:
       - cartservice
       - orderservice
       - commentservice
+      - searchservice
+    restart: unless-stopped
 
-  productservice:
-    build:
-      context: .
-      dockerfile: ./OtakuNest.ProductService/Dockerfile 
-    ports:
-      - "5001:8080"
+  kibana:
+    image: kibana:8.15.0
+    container_name: kibana
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-productservice-db;
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
     depends_on:
-      postgres:
+      elasticsearch:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-
-  userservice:
-    build:
-      context: .
-      dockerfile: ./OtakuNest.UserService/Dockerfile
-    ports:
-      - "5002:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-userservice-db;
-      - Jwt__Key=QmJ0zLVzKn6hw4IcszPgQY2vDjJvYqVztuI4bq1+qk2ZCXR4DKZrGhZfrs0+NbyT
-      - Jwt__Issuer=OtakuNest.UserService
-      - Jwt__Audience=OtakuNest.Client
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-
-  cartservice:
-    build:
-      context: .
-      dockerfile: ./OtakuNest.CartService/Dockerfile
-    ports:
-      - "5003:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-cartservice-db;
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-
-  orderservice:
-    build:
-      context: .
-      dockerfile: ./OtakuNest.OrderService/Dockerfile
-    ports:
-      - "5004:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-orderservice-db;
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-
-  commentservice:
-    build:
-      context: .
-      dockerfile: ./OtakuNest.CommentService/Dockerfile
-    ports:
-      - "5005:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Username=postgres;Password=12345678;Database=ecomm-commentservice-db;
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 12345678
-      POSTGRES_DB: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    restart: unless-stopped
 
 volumes:
   pgdata:
+  esdata:
