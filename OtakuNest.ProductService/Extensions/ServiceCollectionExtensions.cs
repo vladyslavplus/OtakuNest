@@ -54,6 +54,7 @@ namespace OtakuNest.ProductService.Extensions
         public static IServiceCollection AddAppServices(this IServiceCollection services)
         {
             services.AddScoped<IProductService, Services.ProductService>();
+            services.AddScoped<ProductSeeder>();
             return services;
         }
     }

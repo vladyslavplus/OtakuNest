@@ -1,9 +1,9 @@
 using OtakuNest.Common.Extensions;
+using OtakuNest.ProductService.Data;
 using OtakuNest.ProductService.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services
@@ -20,7 +20,12 @@ var app = builder.Build();
 
 await app.ApplyMigrationsAsync();
 
-// Configure the HTTP request pipeline.
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<ProductSeeder>();
+    await seeder.SeedAsync();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
