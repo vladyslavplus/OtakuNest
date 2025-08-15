@@ -1,4 +1,5 @@
 ﻿using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.Mapping;
 using OtakuNest.SearchService.DTOs;
 
 namespace OtakuNest.SearchService.Services
@@ -100,6 +101,32 @@ namespace OtakuNest.SearchService.Services
                 productName, searchResponse.Documents.Count);
 
             return searchResponse.Documents;
+        }
+
+        public async Task EnsureIndexExistsAsync(CancellationToken cancellationToken = default)
+        {
+            var existsResponse = await _client.Indices.ExistsAsync(IndexName, cancellationToken);
+            if (!existsResponse.Exists)
+            {
+                var createResponse = await _client.Indices.CreateAsync(IndexName, c => c
+                    .Mappings(m => m
+                        .Properties(new Properties
+                        {
+                            ["Id"] = new KeywordProperty(),
+                            ["Name"] = new TextProperty
+                            {
+                                Fields = new Properties
+                                {
+                                    ["keyword"] = new KeywordProperty()
+                                }
+                            }
+                        })
+                    ),
+                    cancellationToken);
+
+                if (!createResponse.IsValidResponse)
+                    throw new InvalidOperationException($"Failed to create index {IndexName}: {createResponse.ElasticsearchServerError?.Error.Reason}");
+            }
         }
 
         public async Task<bool> IsHealthyAsync(CancellationToken cancellationToken = default)

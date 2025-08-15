@@ -1,6 +1,7 @@
 using MassTransit;
 using OtakuNest.SearchService.Consumers;
 using OtakuNest.SearchService.Extensions;
+using OtakuNest.SearchService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +39,12 @@ var elasticSearchUrl = builder.Configuration.GetConnectionString("Elasticsearch"
 builder.Services.AddElasticSearch(elasticSearchUrl);
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var elasticService = scope.ServiceProvider.GetRequiredService<IElasticService>();
+    await elasticService.EnsureIndexExistsAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {
