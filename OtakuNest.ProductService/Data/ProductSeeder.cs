@@ -364,6 +364,7 @@ namespace OtakuNest.ProductService.Data
                         product.Id,
                         product.Name,
                         product.Price,
+                        product.ImageUrl,
                         product.SKU,
                         product.Category,
                         product.Quantity,
