@@ -1,5 +1,6 @@
 ﻿using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Mapping;
+using Elastic.Clients.Elasticsearch.QueryDsl;
 using OtakuNest.SearchService.DTOs;
 
 namespace OtakuNest.SearchService.Services
@@ -79,10 +80,32 @@ namespace OtakuNest.SearchService.Services
                 .Query(q => q
                     .Bool(b => b
                         .Should(
-                            s => s.Term(t => t.Field(new Field("name.keyword")).Value(productName).Boost(3.0f)),
-                            s => s.Prefix(p => p.Field(new Field("name")).Value(productName.ToLower()).Boost(2.0f)),
-                            s => s.Fuzzy(f => f.Field(new Field("name")).Value(productName).Fuzziness(new Fuzziness(1)).Boost(1.5f)),
-                            s => s.Wildcard(w => w.Field(new Field("name")).Value($"*{productName.ToLower()}*").Boost(1.0f))
+                            s => s.Term(t => t.Field(new Field("name.keyword")).Value(productName).Boost(5.0f)),
+
+                            s => s.Match(m => m.Field(new Field("name")).Query(productName).Boost(4.0f)),
+
+                            s => s.MultiMatch(mm => mm
+                                .Fields(new Field("name"))
+                                .Query(productName)
+                                .Type(TextQueryType.BestFields)
+                                .Boost(3.5f)
+                            ),
+
+                            s => s.MatchPhrasePrefix(mpp => mpp
+                                .Field(new Field("name"))
+                                .Query(productName)
+                                .Boost(3.0f)
+                            ),
+
+                            s => s.Wildcard(w => w.Field(new Field("name")).Value($"*{productName.ToLower()}*").Boost(2.0f)),
+
+                            s => s.Fuzzy(f => f.Field(new Field("name")).Value(productName).Fuzziness(new Fuzziness(2)).Boost(1.5f)),
+
+                            s => s.QueryString(qs => qs
+                                .Fields(new Field("name"))
+                                .Query($"*{string.Join("* AND *", productName.Split(' ', StringSplitOptions.RemoveEmptyEntries))}*")
+                                .Boost(1.0f)
+                            )
                         )
                         .MinimumShouldMatch(1)
                     )

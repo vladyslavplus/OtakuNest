@@ -16,10 +16,14 @@ namespace OtakuNest.SearchService.Consumers
 
         public async Task Consume(ConsumeContext<ProductUpdatedEvent> context)
         {
+            var message = context.Message;
+
             var product = new ProductElasticDto
             {
-                Id = context.Message.Id,
-                Name = context.Message.Name
+                Id = message.Id,
+                Name = message.Name,
+                Price = message.Price,
+                ImageUrl = message.ImageUrl,
             };
 
             await _elasticService.UpdateProductAsync(product);

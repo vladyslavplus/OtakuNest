@@ -21,7 +21,9 @@ namespace OtakuNest.SearchService.Consumers
             var productElasticDto = new ProductElasticDto
             {
                 Id = message.Id,
-                Name = message.Name
+                Name = message.Name,
+                Price = message.Price,
+                ImageUrl = message.ImageUrl
             };
 
             await _elasticService.IndexProductAsync(productElasticDto);
