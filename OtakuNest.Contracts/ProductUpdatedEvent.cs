@@ -4,6 +4,7 @@
         Guid Id,
         string Name,
         decimal Price,
+        string ImageUrl,
         string SKU,
         string Category,
         int Quantity,
