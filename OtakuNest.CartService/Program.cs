@@ -1,3 +1,5 @@
+using FluentValidation;
+using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
 using OtakuNest.CartService.Extensions;
 using OtakuNest.CartService.Middlewares;
 using OtakuNest.Common.Extensions;
@@ -14,6 +16,8 @@ builder.Services
     .AddAppServices()
     .AddJwtBearerAuthentication(builder.Configuration);
 
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly, includeInternalTypes: true);
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
