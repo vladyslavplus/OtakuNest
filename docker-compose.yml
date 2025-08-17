@@ -49,6 +49,25 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    
+  searchservice:
+    build:
+      context: .
+      dockerfile: ./OtakuNest.SearchService/Dockerfile
+    ports:
+      - "5006:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Elasticsearch__Uri=http://elasticsearch:9200
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
 
   productservice:
     build:
@@ -62,11 +81,14 @@ services:
       - RabbitMq__Host=rabbitmq
       - RabbitMq__Username=guest
       - RabbitMq__Password=guest
+      - SEEDING_DELAY=5
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      searchservice:
+        condition: service_started
     restart: unless-stopped
 
   userservice:
@@ -143,25 +165,6 @@ services:
       - RabbitMq__Password=guest
     depends_on:
       postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
-
-  searchservice:
-    build:
-      context: .
-      dockerfile: ./OtakuNest.SearchService/Dockerfile
-    ports:
-      - "5006:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - Elasticsearch__Uri=http://elasticsearch:9200
-      - RabbitMq__Host=rabbitmq
-      - RabbitMq__Username=guest
-      - RabbitMq__Password=guest
-    depends_on:
-      elasticsearch:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy

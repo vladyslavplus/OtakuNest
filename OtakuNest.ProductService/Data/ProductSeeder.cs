@@ -9,17 +9,35 @@ namespace OtakuNest.ProductService.Data
     {
         private readonly ProductDbContext _db;
         private readonly IPublishEndpoint _publishEndpoint;
+        private readonly ILogger<ProductSeeder> _logger;
+        private readonly IConfiguration _configuration;
 
-        public ProductSeeder(ProductDbContext db, IPublishEndpoint publishEndpoint)
+        public ProductSeeder(
+            ProductDbContext db,
+            IPublishEndpoint publishEndpoint,
+            ILogger<ProductSeeder> logger,
+            IConfiguration configuration)
         {
             _db = db;
             _publishEndpoint = publishEndpoint;
+            _logger = logger;
+            _configuration = configuration;
         }
 
         public async Task SeedAsync(CancellationToken cancellationToken = default)
         {
             if (await _db.Products.AnyAsync(cancellationToken))
+            {
+                _logger.LogInformation("Products already exist, skipping seeding");
                 return;
+            }
+
+            var seedingDelay = _configuration.GetValue<int>("SEEDING_DELAY", 0);
+            if (seedingDelay > 0)
+            {
+                _logger.LogInformation("Waiting {Delay} seconds before seeding to allow SearchService to start", seedingDelay);
+                await Task.Delay(TimeSpan.FromSeconds(seedingDelay), cancellationToken);
+            }
 
             var products = new List<Product>
             {
@@ -331,23 +349,38 @@ namespace OtakuNest.ProductService.Data
                 }
             };
 
+            _logger.LogInformation("Starting to seed {Count} products", products.Count);
+
             _db.Products.AddRange(products);
             await _db.SaveChangesAsync(cancellationToken);
 
+            _logger.LogInformation("Products saved to database, now publishing events");
+
             foreach (var product in products)
             {
-                await _publishEndpoint.Publish(new ProductCreatedEvent(
-                    product.Id,
-                    product.Name,
-                    product.Price,
-                    product.SKU,
-                    product.Category,
-                    product.Quantity,
-                    product.IsAvailable,
-                    product.Discount,
-                    product.CreatedAt
-                ), cancellationToken);
+                try
+                {
+                    await _publishEndpoint.Publish(new ProductCreatedEvent(
+                        product.Id,
+                        product.Name,
+                        product.Price,
+                        product.SKU,
+                        product.Category,
+                        product.Quantity,
+                        product.IsAvailable,
+                        product.Discount,
+                        product.CreatedAt
+                    ), cancellationToken);
+
+                    _logger.LogDebug("Published event for product {ProductId} - {ProductName}", product.Id, product.Name);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish event for product {ProductId}", product.Id);
+                }
             }
+
+            _logger.LogInformation("Completed seeding and event publishing for {Count} products", products.Count);
         }
     }
 }
