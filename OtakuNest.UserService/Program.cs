@@ -8,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddSwaggerWithJwt()
     .AddAppIdentity(builder.Configuration)
+    .AddFluentValidationSetup(typeof(Program).Assembly)
     .AddJwtBearerAuthentication(builder.Configuration)
     .AddAppMassTransit()
     .AddApplicationServices();
