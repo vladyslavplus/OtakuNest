@@ -11,6 +11,7 @@ builder.Services
     .AddRabbitMq()
     .AddAppServices()
     .AddCommonHelpers()
+    .AddFluentValidationSetup(typeof(Program).Assembly)
     .AddJwtBearerAuthentication(builder.Configuration);
 
 builder.Services.AddAuthorization();
