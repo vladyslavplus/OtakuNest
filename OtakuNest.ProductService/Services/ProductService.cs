@@ -32,7 +32,16 @@ public class ProductService : IProductService
         var query = _context.Products.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(parameters.Name))
-            query = query.Where(p => EF.Functions.ILike(p.Name, $"%{parameters.Name}%"));
+        {
+            if (_context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+            {
+                query = query.Where(p => p.Name.Contains(parameters.Name, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                query = query.Where(p => EF.Functions.ILike(p.Name, $"%{parameters.Name}%"));
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(parameters.Category))
             query = query.Where(p => p.Category == parameters.Category);
