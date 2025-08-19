@@ -1,4 +1,5 @@
 using MassTransit;
+using OtakuNest.Common.Extensions;
 using OtakuNest.SearchService.Consumers;
 using OtakuNest.SearchService.Extensions;
 using OtakuNest.SearchService.Services;
@@ -53,7 +54,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseGlobalExceptionHandling();
 app.UseAuthorization();
 app.MapControllers();
-
 await app.RunAsync();
