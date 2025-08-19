@@ -29,7 +29,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<CartExceptionHandlingMiddleware>();
+app.UseGlobalExceptionHandling();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
