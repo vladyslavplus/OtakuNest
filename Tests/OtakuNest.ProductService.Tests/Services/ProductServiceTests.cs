@@ -2,6 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using OtakuNest.Common.Helpers;
+using OtakuNest.Common.Services.Caching;
+using OtakuNest.Contracts;
 using OtakuNest.ProductService.Data;
 using OtakuNest.ProductService.DTOs;
 using OtakuNest.ProductService.Models;
@@ -14,12 +16,16 @@ namespace OtakuNest.ProductService.Tests.Services
     {
         private readonly ProductDbContext _context;
         private readonly ProductService.Services.ProductService _service;
+        private readonly Mock<IRedisCacheService> _cacheServiceMock;
+        private readonly Mock<IPublishEndpoint> _publishEndpointMock;
         private readonly List<Guid> _productIds;
         private bool _disposed = false;
 
         public ProductServiceTests()
         {
             _context = GetInMemoryDbContext();
+            _cacheServiceMock = new Mock<IRedisCacheService>();
+            _publishEndpointMock = new Mock<IPublishEndpoint>();
             _service = CreateService(_context);
             _productIds = _context.Products.Select(p => p.Id).ToList();
         }
@@ -42,15 +48,47 @@ namespace OtakuNest.ProductService.Tests.Services
             GC.SuppressFinalize(this);
         }
 
-        private static ProductService.Services.ProductService CreateService(ProductDbContext context)
+        private ProductService.Services.ProductService CreateService(ProductDbContext context)
         {
             var sortHelper = new SortHelper<Product>();
-            var publishEndpointMock = new Mock<IPublishEndpoint>();
+
+            _cacheServiceMock
+                .Setup(x => x.GetDataAsync<PagedListCacheDto<ProductDto>>(It.IsAny<string>()))
+                .ReturnsAsync((PagedListCacheDto<ProductDto>?)null);
+
+            _cacheServiceMock
+                .Setup(x => x.GetDataAsync<ProductDto>(It.IsAny<string>()))
+                .ReturnsAsync((ProductDto?)null);
+
+            _cacheServiceMock
+                .Setup(x => x.SetDataAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<TimeSpan?>()))
+                .Returns(Task.CompletedTask);
+
+            _cacheServiceMock
+                .Setup(x => x.RemoveDataAsync(It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+
+            _cacheServiceMock
+                .Setup(x => x.AddToSetAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+
+            _cacheServiceMock
+                .Setup(x => x.GetSetMembersAsync(It.IsAny<string>()))
+                .ReturnsAsync(new List<string>());
+
+            _cacheServiceMock
+                .Setup(x => x.ClearSetAsync(It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+
+            _publishEndpointMock
+                .Setup(x => x.Publish<It.IsAnyType>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
 
             return new ProductService.Services.ProductService(
                 context,
-                publishEndpointMock.Object,
-                sortHelper
+                _publishEndpointMock.Object,
+                sortHelper,
+                _cacheServiceMock.Object
             );
         }
 
@@ -137,6 +175,9 @@ namespace OtakuNest.ProductService.Tests.Services
             result.ShouldNotBeNull();
             result.Count.ShouldBe(1);
             result.Single().Name.ShouldBe("One Piece Poster");
+
+            _cacheServiceMock.Verify(x => x.GetDataAsync<PagedListCacheDto<ProductDto>>(It.IsAny<string>()), Times.Once);
+            _cacheServiceMock.Verify(x => x.SetDataAsync(It.IsAny<string>(), It.IsAny<PagedListCacheDto<ProductDto>>(), It.IsAny<TimeSpan?>()), Times.Once);
         }
 
         [Fact]
@@ -180,9 +221,9 @@ namespace OtakuNest.ProductService.Tests.Services
         }
 
         [Theory]
-        [InlineData(30, 2)] 
-        [InlineData(60, 1)] 
-        [InlineData(150, 0)] 
+        [InlineData(30, 2)]
+        [InlineData(60, 1)]
+        [InlineData(150, 0)]
         public async Task GetAllAsync_Should_Filter_By_MinPrice(decimal minPrice, int expectedCount)
         {
             // Arrange
@@ -205,7 +246,7 @@ namespace OtakuNest.ProductService.Tests.Services
         [Theory]
         [InlineData(30, 1)]
         [InlineData(60, 2)]
-        [InlineData(150, 3)] 
+        [InlineData(150, 3)]
         public async Task GetAllAsync_Should_Filter_By_MaxPrice(decimal maxPrice, int expectedCount)
         {
             // Arrange
@@ -226,8 +267,8 @@ namespace OtakuNest.ProductService.Tests.Services
         }
 
         [Theory]
-        [InlineData(true, 2)]  
-        [InlineData(false, 1)] 
+        [InlineData(true, 2)]
+        [InlineData(false, 1)]
         public async Task GetAllAsync_Should_Filter_By_Availability(bool isAvailable, int expectedCount)
         {
             // Arrange
@@ -249,8 +290,8 @@ namespace OtakuNest.ProductService.Tests.Services
 
         [Theory]
         [InlineData(4, 2)]
-        [InlineData(5, 1)] 
-        [InlineData(6, 0)] 
+        [InlineData(5, 1)]
+        [InlineData(6, 0)]
         public async Task GetAllAsync_Should_Filter_By_MinRating(int minRating, int expectedCount)
         {
             // Arrange
@@ -296,15 +337,101 @@ namespace OtakuNest.ProductService.Tests.Services
             product.IsAvailable.ShouldBeTrue();
         }
 
+        [Fact]
+        public async Task GetAllAsync_Should_Filter_By_Tags_Partial_Match()
+        {
+            // Arrange
+            var parameters = new ProductParameters
+            {
+                Tags = "anime",
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            // Act
+            var result = await _service.GetAllAsync(parameters, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Count.ShouldBe(3); 
+            result.All(p => p.Tags.Contains("anime")).ShouldBeTrue();
+        }
+
+        [Theory]
+        [InlineData(0, 5, 3)] 
+        [InlineData(10, 20, 0)] 
+        public async Task GetAllAsync_Should_Filter_By_Discount_Range(decimal minDiscount, decimal maxDiscount, int expectedCount)
+        {
+            // Arrange
+            var parameters = new ProductParameters
+            {
+                MinDiscount = minDiscount,
+                MaxDiscount = maxDiscount,
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            // Act
+            var result = await _service.GetAllAsync(parameters, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Count.ShouldBe(expectedCount);
+            result.All(p => p.Discount >= minDiscount && p.Discount <= maxDiscount).ShouldBeTrue();
+        }
+
+        [Theory]
+        [InlineData(3, 4, 2)] 
+        [InlineData(4.5, 5, 1)] 
+        public async Task GetAllAsync_Should_Filter_By_Rating_Range(double minRating, double maxRating, int expectedCount)
+        {
+            // Arrange
+            var parameters = new ProductParameters
+            {
+                MinRating = minRating,
+                MaxRating = maxRating,
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            // Act
+            var result = await _service.GetAllAsync(parameters, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Count.ShouldBe(expectedCount);
+            result.All(p => p.Rating >= minRating && p.Rating <= maxRating).ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Should_Handle_Case_Insensitive_Name_Search()
+        {
+            // Arrange
+            var parameters = new ProductParameters
+            {
+                Name = "NARUTO", 
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            // Act
+            var result = await _service.GetAllAsync(parameters, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Count.ShouldBe(1);
+            result.Single().Name.ShouldBe("Naruto Figure");
+        }
+
         #endregion
 
         #region Sorting Tests
 
         [Theory]
-        [InlineData("Name", "Attack on Titan T-Shirt")] 
-        [InlineData("Name desc", "One Piece Poster")]   
-        [InlineData("Price", "One Piece Poster")]       
-        [InlineData("Price desc", "Naruto Figure")]     
+        [InlineData("Name", "Attack on Titan T-Shirt")]
+        [InlineData("Name desc", "One Piece Poster")]
+        [InlineData("Price", "One Piece Poster")]
+        [InlineData("Price desc", "Naruto Figure")]
         public async Task GetAllAsync_Should_Sort_Products_Correctly(string orderBy, string expectedFirstProductName)
         {
             // Arrange
@@ -329,9 +456,9 @@ namespace OtakuNest.ProductService.Tests.Services
         #region Pagination Tests
 
         [Theory]
-        [InlineData(1, 2, 2)] 
-        [InlineData(2, 2, 1)] 
-        [InlineData(3, 2, 0)] 
+        [InlineData(1, 2, 2)]
+        [InlineData(2, 2, 1)]
+        [InlineData(3, 2, 0)]
         public async Task GetAllAsync_Should_Handle_Pagination_Correctly(int pageNumber, int pageSize, int expectedCount)
         {
             // Arrange
@@ -347,6 +474,166 @@ namespace OtakuNest.ProductService.Tests.Services
             // Assert
             result.ShouldNotBeNull();
             result.Count.ShouldBe(expectedCount);
+        }
+
+        #endregion
+
+        #region Complex Scenario Tests
+
+        [Fact]
+        public async Task GetAllAsync_Should_Handle_Complex_Multi_Filter_Scenario()
+        {
+            // Arrange
+            var parameters = new ProductParameters
+            {
+                MinPrice = 20,
+                MaxPrice = 100,
+                IsAvailable = true,
+                MinRating = 4,
+                Category = "Figures",
+                OrderBy = "Price desc",
+                PageNumber = 1,
+                PageSize = 5
+            };
+
+            // Act
+            var result = await _service.GetAllAsync(parameters, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Count.ShouldBe(1);
+            var product = result.Single();
+            product.Category.ShouldBe("Figures");
+            product.Price.ShouldBeGreaterThanOrEqualTo(20);
+            product.Price.ShouldBeLessThanOrEqualTo(100);
+            product.IsAvailable.ShouldBeTrue();
+            product.Rating.ShouldBeGreaterThanOrEqualTo(4);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Should_Return_Empty_For_Impossible_Filter_Combination()
+        {
+            // Arrange
+            var parameters = new ProductParameters
+            {
+                Category = "Figures",
+                IsAvailable = false, 
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            // Act
+            var result = await _service.GetAllAsync(parameters, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.ShouldBeEmpty();
+        }
+
+        #endregion
+
+        #region Caching Tests
+
+        [Fact]
+        public async Task GetAllAsync_Should_Return_Cached_Result_When_Cache_Hit()
+        {
+            // Arrange
+            var parameters = new ProductParameters
+            {
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            var cachedResult = new PagedListCacheDto<ProductDto>
+            {
+                Items = new List<ProductDto>
+                {
+                    new() { Id = Guid.NewGuid(), Name = "Cached Product", Price = 99.99m }
+                },
+                TotalCount = 1,
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            _cacheServiceMock
+                .Setup(x => x.GetDataAsync<PagedListCacheDto<ProductDto>>(It.IsAny<string>()))
+                .ReturnsAsync(cachedResult);
+
+            // Act
+            var result = await _service.GetAllAsync(parameters, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Count.ShouldBe(1);
+            result[0].Name.ShouldBe("Cached Product");
+            result[0].Price.ShouldBe(99.99m);
+
+            _cacheServiceMock.Verify(x => x.SetDataAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<TimeSpan?>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_Should_Return_Cached_Product_When_Cache_Hit()
+        {
+            // Arrange
+            var productId = Guid.NewGuid();
+            var cachedProduct = new ProductDto
+            {
+                Id = productId,
+                Name = "Cached Product",
+                Price = 99.99m
+            };
+
+            _cacheServiceMock
+                .Setup(x => x.GetDataAsync<ProductDto>($"product:{productId}"))
+                .ReturnsAsync(cachedProduct);
+
+            // Act
+            var result = await _service.GetByIdAsync(productId, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Id.ShouldBe(productId);
+            result.Name.ShouldBe("Cached Product");
+            result.Price.ShouldBe(99.99m);
+
+            _cacheServiceMock.Verify(x => x.SetDataAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<TimeSpan?>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Should_Cache_Result_After_Database_Query()
+        {
+            // Arrange
+            var parameters = new ProductParameters
+            {
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            // Act
+            var result = await _service.GetAllAsync(parameters, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+
+            _cacheServiceMock.Verify(x => x.GetDataAsync<PagedListCacheDto<ProductDto>>(It.IsAny<string>()), Times.Once);
+            _cacheServiceMock.Verify(x => x.SetDataAsync(It.IsAny<string>(), It.IsAny<PagedListCacheDto<ProductDto>>(), TimeSpan.FromMinutes(3)), Times.Once);
+            _cacheServiceMock.Verify(x => x.AddToSetAsync("products:list:keys", It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_Should_Cache_Product_After_Database_Query()
+        {
+            // Arrange
+            var existingId = _productIds[0];
+
+            // Act
+            var result = await _service.GetByIdAsync(existingId, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+
+            _cacheServiceMock.Verify(x => x.GetDataAsync<ProductDto>($"product:{existingId}"), Times.Once);
+            _cacheServiceMock.Verify(x => x.SetDataAsync($"product:{existingId}", It.IsAny<ProductDto>(), TimeSpan.FromMinutes(30)), Times.Once);
         }
 
         #endregion
@@ -482,6 +769,11 @@ namespace OtakuNest.ProductService.Tests.Services
             result.Rating.ShouldBe(createDto.Rating);
             result.Tags.ShouldBe(createDto.Tags);
             result.Discount.ShouldBe(createDto.Discount);
+
+            _cacheServiceMock.Verify(x => x.SetDataAsync($"product:{result.Id}", It.IsAny<ProductDto>(), TimeSpan.FromMinutes(30)), Times.Once);
+            _cacheServiceMock.Verify(x => x.GetSetMembersAsync("products:list:keys"), Times.Once);
+            _publishEndpointMock.Verify(
+                 x => x.Publish(It.IsAny<ProductCreatedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -520,98 +812,62 @@ namespace OtakuNest.ProductService.Tests.Services
         }
 
         [Fact]
-        public async Task CreateAsync_Should_Set_CreatedAt_And_UpdatedAt()
+        public async Task CreateAsync_Should_Invalidate_List_Cache()
         {
             // Arrange
-            var beforeCreate = DateTime.UtcNow;
             var createDto = new ProductCreateDto
             {
-                Name = "Time Test Product",
-                Description = "Testing timestamps",
+                Name = "Cache Invalidation Test",
+                Description = "Testing cache invalidation",
                 Price = 25m,
                 Quantity = 1,
-                ImageUrl = "https://example.com/time-test.jpg",
+                ImageUrl = "https://example.com/cache-test.jpg",
                 Category = "Test",
-                SKU = "TIME-001",
+                SKU = "CACHE-001",
                 IsAvailable = true,
                 Rating = 3,
-                Tags = "test,time",
+                Tags = "test,cache",
                 Discount = 0m
             };
+
+            var cacheKeys = new List<string> { "products:page:1", "products:page:2" };
+            _cacheServiceMock
+                .Setup(x => x.GetSetMembersAsync("products:list:keys"))
+                .ReturnsAsync(cacheKeys);
 
             // Act
             var result = await _service.CreateAsync(createDto, CancellationToken.None);
-            var afterCreate = DateTime.UtcNow;
 
             // Assert
-            var savedProduct = await _context.Products.FindAsync(result.Id);
-            savedProduct.ShouldNotBeNull();
-            savedProduct.CreatedAt.ShouldBeGreaterThanOrEqualTo(beforeCreate);
-            savedProduct.CreatedAt.ShouldBeLessThanOrEqualTo(afterCreate);
-            savedProduct.UpdatedAt.ShouldBeGreaterThanOrEqualTo(beforeCreate);
-            savedProduct.UpdatedAt.ShouldBeLessThanOrEqualTo(afterCreate);
+            result.ShouldNotBeNull();
+
+            _cacheServiceMock.Verify(x => x.GetSetMembersAsync("products:list:keys"), Times.Once);
+            _cacheServiceMock.Verify(x => x.RemoveDataAsync("products:page:1"), Times.Once);
+            _cacheServiceMock.Verify(x => x.RemoveDataAsync("products:page:2"), Times.Once);
+            _cacheServiceMock.Verify(x => x.ClearSetAsync("products:list:keys"), Times.Once);
         }
 
-        [Fact]
-        public async Task CreateAsync_Should_Generate_Unique_Guid()
-        {
-            // Arrange
-            var createDto1 = new ProductCreateDto
-            {
-                Name = "Product 1",
-                Description = "First product",
-                Price = 10m,
-                Quantity = 1,
-                ImageUrl = "https://example.com/product1.jpg",
-                Category = "Test",
-                SKU = "UNIQUE-001",
-                IsAvailable = true,
-                Rating = 5,
-                Tags = "test",
-                Discount = 0m
-            };
+        #endregion
 
-            var createDto2 = new ProductCreateDto
-            {
-                Name = "Product 2",
-                Description = "Second product",
-                Price = 20m,
-                Quantity = 2,
-                ImageUrl = "https://example.com/product2.jpg",
-                Category = "Test",
-                SKU = "UNIQUE-002",
-                IsAvailable = true,
-                Rating = 4,
-                Tags = "test",
-                Discount = 0m
-            };
-
-            // Act
-            var result1 = await _service.CreateAsync(createDto1, CancellationToken.None);
-            var result2 = await _service.CreateAsync(createDto2, CancellationToken.None);
-
-            // Assert
-            result1.Id.ShouldNotBe(Guid.Empty);
-            result2.Id.ShouldNotBe(Guid.Empty);
-            result1.Id.ShouldNotBe(result2.Id);
-        }
+        #region Error Handling and Validation Tests
 
         [Fact]
-        public async Task CreateAsync_Should_Handle_Valid_Minimal_Data()
+        public async Task CreateAsync_Should_Handle_Very_Long_Strings()
         {
             // Arrange
+            var longString = new string('a', 1000);
             var createDto = new ProductCreateDto
             {
-                Name = "Minimal Product",
-                Description = "Valid description",
-                Price = 15m,
+                Name = longString,
+                Description = longString,
+                Price = 25m,
                 Quantity = 1,
-                ImageUrl = "https://example.com/minimal.jpg",
+                ImageUrl = "https://example.com/long.jpg",
                 Category = "Test",
-                SKU = "MIN-001",
+                SKU = "LONG-001",
                 IsAvailable = true,
                 Rating = 3,
-                Tags = "minimal,test",
+                Tags = longString,
                 Discount = 0m
             };
 
@@ -620,69 +876,29 @@ namespace OtakuNest.ProductService.Tests.Services
 
             // Assert
             result.ShouldNotBeNull();
-            result.Id.ShouldNotBe(Guid.Empty);
-            result.Name.ShouldBe("Minimal Product");
-            result.Description.ShouldBe("Valid description");
-            result.ImageUrl.ShouldBe("https://example.com/minimal.jpg");
-            result.Tags.ShouldBe("minimal,test");
-        }
-
-        [Fact]
-        public async Task CreateAsync_Should_Handle_Maximum_Field_Lengths()
-        {
-            // Arrange
-            var longName = new string('A', 100);
-            var longDescription = new string('B', 1000);
-            var longCategory = new string('C', 50);
-            var longSKU = new string('D', 50);
-            var longTags = new string('T', 200);
-
-            var createDto = new ProductCreateDto
-            {
-                Name = longName,
-                Description = longDescription,
-                Price = 99.99m,
-                Quantity = 999,
-                ImageUrl = "https://example.com/long-field-test.jpg",
-                Category = longCategory,
-                SKU = longSKU,
-                IsAvailable = true,
-                Rating = 5,
-                Tags = longTags,
-                Discount = 50m
-            };
-
-            // Act
-            var result = await _service.CreateAsync(createDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldNotBeNull();
-            result.Name.ShouldBe(longName);
-            result.Description.ShouldBe(longDescription);
-            result.Category.ShouldBe(longCategory);
-            result.SKU.ShouldBe(longSKU);
-            result.Tags.ShouldBe(longTags);
+            result.Name.ShouldBe(longString);
+            result.Description.ShouldBe(longString);
+            result.Tags.ShouldBe(longString);
         }
 
         [Theory]
-        [InlineData(0.1)]
-        [InlineData(99.99)]
-        [InlineData(1000.50)]
-        public async Task CreateAsync_Should_Handle_Valid_Prices(decimal price)
+        [InlineData(0.01)]
+        [InlineData(999999.99)]
+        public async Task CreateAsync_Should_Handle_Edge_Case_Prices(decimal price)
         {
             // Arrange
             var createDto = new ProductCreateDto
             {
-                Name = $"Price Test Product {price}",
-                Description = "Testing valid prices",
+                Name = $"Edge Price Product",
+                Description = "Testing edge case prices",
                 Price = price,
                 Quantity = 1,
-                ImageUrl = "https://example.com/price-test.jpg",
+                ImageUrl = "https://example.com/edge.jpg",
                 Category = "Test",
-                SKU = $"PRICE-{price:0.00}".Replace(".", ""),
+                SKU = "EDGE-001",
                 IsAvailable = true,
-                Rating = 4,
-                Tags = "test,price",
+                Rating = 3,
+                Tags = "test",
                 Discount = 0m
             };
 
@@ -696,121 +912,93 @@ namespace OtakuNest.ProductService.Tests.Services
 
         [Theory]
         [InlineData(0)]
-        [InlineData(1)]
-        [InlineData(2)]
-        [InlineData(3)]
-        [InlineData(4)]
-        [InlineData(5)]
-        public async Task CreateAsync_Should_Handle_Valid_Ratings(double rating)
+        [InlineData(int.MaxValue)]
+        public async Task CreateAsync_Should_Handle_Edge_Case_Quantities(int quantity)
         {
             // Arrange
             var createDto = new ProductCreateDto
             {
-                Name = $"Rating Test Product {rating}",
-                Description = "Testing valid ratings",
+                Name = "Edge Quantity Product",
+                Description = "Testing edge case quantities",
                 Price = 25m,
-                Quantity = 1,
-                ImageUrl = "https://example.com/rating-test.jpg",
+                Quantity = quantity,
+                ImageUrl = "https://example.com/quantity.jpg",
                 Category = "Test",
-                SKU = $"RATING-{rating}",
-                IsAvailable = true,
-                Rating = rating,
-                Tags = "test,rating",
-                Discount = 0m
-            };
-
-            // Act
-            var result = await _service.CreateAsync(createDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldNotBeNull();
-            result.Rating.ShouldBe(rating);
-        }
-
-        [Theory]
-        [InlineData(0)]
-        [InlineData(25.5)]
-        [InlineData(50)]
-        [InlineData(99.99)]
-        [InlineData(100)]
-        public async Task CreateAsync_Should_Handle_Valid_Discounts(decimal discount)
-        {
-            // Arrange
-            var createDto = new ProductCreateDto
-            {
-                Name = $"Discount Test Product {discount}",
-                Description = "Testing valid discounts",
-                Price = 100m,
-                Quantity = 1,
-                ImageUrl = "https://example.com/discount-test.jpg",
-                Category = "Test",
-                SKU = $"DISC-{discount:0.00}".Replace(".", ""),
-                IsAvailable = true,
-                Rating = 3,
-                Tags = "test,discount",
-                Discount = discount
-            };
-
-            // Act
-            var result = await _service.CreateAsync(createDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldNotBeNull();
-            result.Discount.ShouldBe(discount);
-        }
-
-        [Fact]
-        public async Task CreateAsync_Should_Handle_Decimal_Precision()
-        {
-            // Arrange
-            var createDto = new ProductCreateDto
-            {
-                Name = "Precision Test Product",
-                Description = "Testing decimal precision",
-                Price = 99.999m,
-                Quantity = 1,
-                ImageUrl = "https://example.com/precision.jpg",
-                Category = "Test",
-                SKU = "PREC-001",
-                IsAvailable = true,
-                Rating = 5,
-                Tags = "test,precision",
-                Discount = 15.555m
-            };
-
-            // Act
-            var result = await _service.CreateAsync(createDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldNotBeNull();
-            result.Price.ShouldBe(99.999m);
-            result.Discount.ShouldBe(15.555m);
-        }
-
-        [Fact]
-        public async Task CreateAsync_Should_Handle_Cancellation_Token()
-        {
-            // Arrange
-            var createDto = new ProductCreateDto
-            {
-                Name = "Cancellation Test Product",
-                Description = "Testing cancellation",
-                Price = 30m,
-                Quantity = 1,
-                ImageUrl = "https://example.com/cancel.jpg",
-                Category = "Test",
-                SKU = "CANCEL-001",
+                SKU = "QTY-001",
                 IsAvailable = true,
                 Rating = 3,
                 Tags = "test",
                 Discount = 0m
             };
 
-            using var cts = new CancellationTokenSource();
+            // Act
+            var result = await _service.CreateAsync(createDto, CancellationToken.None);
 
-            // Act & Assert
-            var result = await _service.CreateAsync(createDto, cts.Token);
+            // Assert
             result.ShouldNotBeNull();
+            result.Quantity.ShouldBe(quantity);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_Should_Handle_Null_And_Empty_String_Updates()
+        {
+            // Arrange
+            var existingProductId = _productIds[0];
+            var updateDto = new ProductUpdateDto
+            {
+                Name = "", 
+                Description = null,
+                Tags = "" 
+            };
+
+            // Act
+            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeTrue();
+
+            var updatedProduct = await _context.Products.FindAsync(existingProductId);
+            updatedProduct.ShouldNotBeNull();
+            updatedProduct.Name.ShouldBe(""); 
+            updatedProduct.Tags.ShouldBe(""); 
+        }
+
+        #endregion
+
+        #region Cache Invalidation Edge Cases
+
+        [Fact]
+        public async Task CreateAsync_Should_Handle_Empty_Cache_Keys_Set()
+        {
+            // Arrange
+            _cacheServiceMock
+                .Setup(x => x.GetSetMembersAsync("products:list:keys"))
+                .ReturnsAsync(new List<string>());
+
+            var createDto = new ProductCreateDto
+            {
+                Name = "Empty Cache Test",
+                Description = "Testing empty cache keys",
+                Price = 25m,
+                Quantity = 1,
+                ImageUrl = "https://example.com/empty-cache.jpg",
+                Category = "Test",
+                SKU = "EMPTY-001",
+                IsAvailable = true,
+                Rating = 3,
+                Tags = "test",
+                Discount = 0m
+            };
+
+            // Act
+            var result = await _service.CreateAsync(createDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+
+            _cacheServiceMock.Verify(x => x.GetSetMembersAsync("products:list:keys"), Times.Once);
+            _cacheServiceMock.Verify(x => x.RemoveDataAsync(It.IsAny<string>()), Times.Never);
+            _cacheServiceMock.Verify(x => x.ClearSetAsync("products:list:keys"), Times.Once);
         }
 
         #endregion
@@ -856,73 +1044,10 @@ namespace OtakuNest.ProductService.Tests.Services
             updatedProduct.Rating.ShouldBe(updateDto.Rating.Value);
             updatedProduct.Tags.ShouldBe(updateDto.Tags);
             updatedProduct.Discount.ShouldBe(updateDto.Discount.Value);
-        }
 
-        [Fact]
-        public async Task UpdateAsync_Should_Update_Only_Provided_Fields()
-        {
-            // Arrange
-            var existingProductId = _productIds[0];
-            var originalProduct = await _context.Products.FindAsync(existingProductId);
-            var originalPrice = originalProduct!.Price;
-
-            var updateDto = new ProductUpdateDto
-            {
-                Name = "Updated Name Only",
-                Description = null, 
-                Price = null,
-                Quantity = 25,
-                ImageUrl = null, 
-                Category = null, 
-                SKU = null, 
-                IsAvailable = null, 
-                Rating = null, 
-                Tags = null, 
-                Discount = null 
-            };
-
-            // Act
-            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldBeTrue();
-
-            var updatedProduct = await _context.Products.FindAsync(existingProductId);
-            updatedProduct.ShouldNotBeNull();
-            updatedProduct.Name.ShouldBe("Updated Name Only"); 
-            updatedProduct.Quantity.ShouldBe(25);
-            updatedProduct.Price.ShouldBe(originalPrice); 
-            updatedProduct.Description.ShouldBe(originalProduct.Description); 
-        }
-
-        [Fact]
-        public async Task UpdateAsync_Should_Update_UpdatedAt_Timestamp()
-        {
-            // Arrange
-            var existingProductId = _productIds[0];
-            var originalProduct = await _context.Products.FindAsync(existingProductId);
-            var originalUpdatedAt = originalProduct!.UpdatedAt;
-
-            var beforeUpdate = DateTime.UtcNow;
-            await Task.Delay(10); 
-
-            var updateDto = new ProductUpdateDto
-            {
-                Name = "Time Update Test"
-            };
-
-            // Act
-            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
-            var afterUpdate = DateTime.UtcNow;
-
-            // Assert
-            result.ShouldBeTrue();
-
-            var updatedProduct = await _context.Products.FindAsync(existingProductId);
-            updatedProduct.ShouldNotBeNull();
-            updatedProduct.UpdatedAt.ShouldBeGreaterThan(originalUpdatedAt);
-            updatedProduct.UpdatedAt.ShouldBeGreaterThanOrEqualTo(beforeUpdate);
-            updatedProduct.UpdatedAt.ShouldBeLessThanOrEqualTo(afterUpdate);
+            _cacheServiceMock.Verify(x => x.SetDataAsync($"product:{existingProductId}", It.IsAny<ProductDto>(), TimeSpan.FromMinutes(30)), Times.Once);
+            _cacheServiceMock.Verify(x => x.GetSetMembersAsync("products:list:keys"), Times.Once);
+            _publishEndpointMock.Verify(x => x.Publish(It.IsAny<ProductUpdatedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -940,179 +1065,28 @@ namespace OtakuNest.ProductService.Tests.Services
 
             // Assert
             result.ShouldBeFalse();
+
+            _cacheServiceMock.Verify(x => x.SetDataAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<TimeSpan?>()), Times.Never);
+            _publishEndpointMock.Verify(x => x.Publish<It.IsAnyType>(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
         }
+
+        #endregion
+
+
+        #region Data Consistency Tests
 
         [Fact]
-        public async Task UpdateAsync_Should_Return_False_For_Empty_Guid()
-        {
-            // Arrange
-            var updateDto = new ProductUpdateDto
-            {
-                Name = "Empty Guid Test"
-            };
-
-            // Act
-            var result = await _service.UpdateAsync(Guid.Empty, updateDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldBeFalse();
-        }
-
-
-        [Theory]
-        [InlineData("Name", "Updated Product Name")]
-        [InlineData("Description", "Updated description text")]
-        [InlineData("ImageUrl", "https://example.com/updated-image.jpg")]
-        [InlineData("Category", "Updated Category")]
-        [InlineData("SKU", "UPDATED-SKU-001")]
-        [InlineData("Tags", "updated,tags,test")]
-        public async Task UpdateAsync_Should_Update_Individual_String_Fields(string fieldName, string newValue)
-        {
-            // Arrange
-            var existingProductId = _productIds[1]; 
-            var updateDto = new ProductUpdateDto();
-
-            switch (fieldName)
-            {
-                case "Name":
-                    updateDto.Name = newValue;
-                    break;
-                case "Description":
-                    updateDto.Description = newValue;
-                    break;
-                case "ImageUrl":
-                    updateDto.ImageUrl = newValue;
-                    break;
-                case "Category":
-                    updateDto.Category = newValue;
-                    break;
-                case "SKU":
-                    updateDto.SKU = newValue;
-                    break;
-                case "Tags":
-                    updateDto.Tags = newValue;
-                    break;
-            }
-
-            // Act
-            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldBeTrue();
-
-            var updatedProduct = await _context.Products.FindAsync(existingProductId);
-            updatedProduct.ShouldNotBeNull();
-
-            switch (fieldName)
-            {
-                case "Name":
-                    updatedProduct.Name.ShouldBe(newValue);
-                    break;
-                case "Description":
-                    updatedProduct.Description.ShouldBe(newValue);
-                    break;
-                case "ImageUrl":
-                    updatedProduct.ImageUrl.ShouldBe(newValue);
-                    break;
-                case "Category":
-                    updatedProduct.Category.ShouldBe(newValue);
-                    break;
-                case "SKU":
-                    updatedProduct.SKU.ShouldBe(newValue);
-                    break;
-                case "Tags":
-                    updatedProduct.Tags.ShouldBe(newValue);
-                    break;
-            }
-        }
-
-        [Theory]
-        [InlineData("Price", 199.99)]
-        [InlineData("Quantity", 50)]
-        [InlineData("Rating", 4.8)]
-        [InlineData("Discount", 25.5)]
-        public async Task UpdateAsync_Should_Update_Individual_Numeric_Fields(string fieldName, decimal newValue)
-        {
-            // Arrange
-            var existingProductId = _productIds[2]; 
-            var updateDto = new ProductUpdateDto();
-
-            switch (fieldName)
-            {
-                case "Price":
-                    updateDto.Price = newValue;
-                    break;
-                case "Quantity":
-                    updateDto.Quantity = (int)newValue;
-                    break;
-                case "Rating":
-                    updateDto.Rating = (double)newValue;
-                    break;
-                case "Discount":
-                    updateDto.Discount = newValue;
-                    break;
-            }
-
-            // Act
-            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldBeTrue();
-
-            var updatedProduct = await _context.Products.FindAsync(existingProductId);
-            updatedProduct.ShouldNotBeNull();
-
-            switch (fieldName)
-            {
-                case "Price":
-                    updatedProduct.Price.ShouldBe(newValue);
-                    break;
-                case "Quantity":
-                    updatedProduct.Quantity.ShouldBe((int)newValue);
-                    break;
-                case "Rating":
-                    updatedProduct.Rating.ShouldBe((double)newValue);
-                    break;
-                case "Discount":
-                    updatedProduct.Discount.ShouldBe(newValue);
-                    break;
-            }
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task UpdateAsync_Should_Update_IsAvailable_Field(bool newAvailability)
-        {
-            // Arrange
-            var existingProductId = _productIds[0];
-            var updateDto = new ProductUpdateDto
-            {
-                IsAvailable = newAvailability
-            };
-
-            // Act
-            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldBeTrue();
-
-            var updatedProduct = await _context.Products.FindAsync(existingProductId);
-            updatedProduct.ShouldNotBeNull();
-            updatedProduct.IsAvailable.ShouldBe(newAvailability);
-        }
-        
-        [Fact]
-        public async Task UpdateAsync_Should_Not_Change_CreatedAt()
+        public async Task UpdateAsync_Should_Maintain_Data_Integrity_After_Partial_Update()
         {
             // Arrange
             var existingProductId = _productIds[0];
             var originalProduct = await _context.Products.FindAsync(existingProductId);
             var originalCreatedAt = originalProduct!.CreatedAt;
+            var originalName = originalProduct.Name;
 
             var updateDto = new ProductUpdateDto
             {
-                Name = "CreatedAt Test Update"
+                Price = 150.00m 
             };
 
             // Act
@@ -1123,73 +1097,39 @@ namespace OtakuNest.ProductService.Tests.Services
 
             var updatedProduct = await _context.Products.FindAsync(existingProductId);
             updatedProduct.ShouldNotBeNull();
+
+            updatedProduct.Price.ShouldBe(150.00m);
+
+            updatedProduct.Name.ShouldBe(originalName);
             updatedProduct.CreatedAt.ShouldBe(originalCreatedAt);
+
+            updatedProduct.UpdatedAt.ShouldBeGreaterThan(originalCreatedAt);
         }
 
         [Fact]
-        public async Task UpdateAsync_Should_Handle_Empty_Update_Dto()
+        public async Task DeleteAsync_Should_Not_Affect_Database_When_Product_Not_Found()
         {
             // Arrange
-            var existingProductId = _productIds[0];
-            var originalProduct = await _context.Products.FindAsync(existingProductId);
-            var originalUpdatedAt = originalProduct!.UpdatedAt;
-            var updateDto = new ProductUpdateDto(); 
+            var nonExistentId = Guid.NewGuid();
+            var initialProducts = await _context.Products.ToListAsync();
+            var initialCount = initialProducts.Count;
 
             // Act
-            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+            var result = await _service.DeleteAsync(nonExistentId, CancellationToken.None);
 
             // Assert
-            result.ShouldBeTrue();
+            result.ShouldBeFalse();
 
-            var updatedProduct = await _context.Products.FindAsync(existingProductId);
-            updatedProduct.ShouldNotBeNull();
+            var finalProducts = await _context.Products.ToListAsync();
+            finalProducts.Count.ShouldBe(initialCount);
 
-            updatedProduct.Name.ShouldBe(originalProduct!.Name);
-            updatedProduct.Description.ShouldBe(originalProduct.Description);
-            updatedProduct.Price.ShouldBe(originalProduct.Price);
-            updatedProduct.Quantity.ShouldBe(originalProduct.Quantity);
-            updatedProduct.UpdatedAt.ShouldBeGreaterThan(originalUpdatedAt);
-        }
-
-        [Fact]
-        public async Task UpdateAsync_Should_Handle_Cancellation_Token()
-        {
-            // Arrange
-            var existingProductId = _productIds[0];
-            var updateDto = new ProductUpdateDto
+            foreach (var originalProduct in initialProducts)
             {
-                Name = "Cancellation Test Update"
-            };
-
-            using var cts = new CancellationTokenSource();
-
-            // Act & Assert
-            var result = await _service.UpdateAsync(existingProductId, updateDto, cts.Token);
-            result.ShouldBeTrue();
+                var stillExists = finalProducts.Any(p => p.Id == originalProduct.Id);
+                stillExists.ShouldBeTrue();
+            }
         }
 
-        [Fact]
-        public async Task UpdateAsync_Should_Handle_Decimal_Precision()
-        {
-            // Arrange
-            var existingProductId = _productIds[0];
-            var updateDto = new ProductUpdateDto
-            {
-                Price = 99.999m,
-                Discount = 15.555m
-            };
-
-            // Act
-            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
-
-            // Assert
-            result.ShouldBeTrue();
-
-            var updatedProduct = await _context.Products.FindAsync(existingProductId);
-            updatedProduct.ShouldNotBeNull();
-            updatedProduct.Price.ShouldBe(99.999m);
-            updatedProduct.Discount.ShouldBe(15.555m);
-        }
         #endregion
 
         #region DeleteAsync Tests
@@ -1212,6 +1152,10 @@ namespace OtakuNest.ProductService.Tests.Services
 
             var deletedProduct = await _context.Products.FindAsync(existingId);
             deletedProduct.ShouldBeNull();
+
+            _cacheServiceMock.Verify(x => x.RemoveDataAsync($"product:{existingId}"), Times.Once);
+            _cacheServiceMock.Verify(x => x.GetSetMembersAsync("products:list:keys"), Times.Once);
+            _publishEndpointMock.Verify(x => x.Publish(It.Is<ProductDeletedEvent>(e => e.Id == existingId), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -1229,6 +1173,9 @@ namespace OtakuNest.ProductService.Tests.Services
 
             var finalCount = await _context.Products.CountAsync();
             finalCount.ShouldBe(initialCount);
+
+            _cacheServiceMock.Verify(x => x.RemoveDataAsync(It.IsAny<string>()), Times.Never);
+            _publishEndpointMock.Verify(x => x.Publish<It.IsAnyType>(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -1370,9 +1317,9 @@ namespace OtakuNest.ProductService.Tests.Services
         }
 
         [Theory]
-        [InlineData(0)] 
+        [InlineData(0)]
         [InlineData(1)]
-        [InlineData(2)] 
+        [InlineData(2)]
         public async Task DeleteAsync_Should_Successfully_Delete_Any_Valid_Product(int productIndex)
         {
             // Arrange
@@ -1416,6 +1363,518 @@ namespace OtakuNest.ProductService.Tests.Services
 
             var deletedProduct = allProducts.FirstOrDefault(p => p.Id == productIdToDelete);
             deletedProduct.ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task DeleteAsync_Should_Invalidate_Cache_After_Deletion()
+        {
+            // Arrange
+            var productId = _productIds[0];
+            var cacheKeys = new List<string> { "products:page:1", "products:page:2" };
+            _cacheServiceMock
+                .Setup(x => x.GetSetMembersAsync("products:list:keys"))
+                .ReturnsAsync(cacheKeys);
+
+            // Act
+            var result = await _service.DeleteAsync(productId, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeTrue();
+
+            _cacheServiceMock.Verify(x => x.RemoveDataAsync($"product:{productId}"), Times.Once);
+            _cacheServiceMock.Verify(x => x.GetSetMembersAsync("products:list:keys"), Times.Once);
+            _cacheServiceMock.Verify(x => x.RemoveDataAsync("products:page:1"), Times.Once);
+            _cacheServiceMock.Verify(x => x.RemoveDataAsync("products:page:2"), Times.Once);
+            _cacheServiceMock.Verify(x => x.ClearSetAsync("products:list:keys"), Times.Once);
+        }
+
+        #endregion
+
+        #region Additional Update Tests
+
+        [Fact]
+        public async Task UpdateAsync_Should_Update_Only_Provided_Fields()
+        {
+            // Arrange
+            var existingProductId = _productIds[0];
+            var originalProduct = await _context.Products.FindAsync(existingProductId);
+            var originalPrice = originalProduct!.Price;
+
+            var updateDto = new ProductUpdateDto
+            {
+                Name = "Updated Name Only",
+                Description = null,
+                Price = null,
+                Quantity = 25,
+                ImageUrl = null,
+                Category = null,
+                SKU = null,
+                IsAvailable = null,
+                Rating = null,
+                Tags = null,
+                Discount = null
+            };
+
+            // Act
+            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeTrue();
+
+            var updatedProduct = await _context.Products.FindAsync(existingProductId);
+            updatedProduct.ShouldNotBeNull();
+            updatedProduct.Name.ShouldBe("Updated Name Only");
+            updatedProduct.Quantity.ShouldBe(25);
+            updatedProduct.Price.ShouldBe(originalPrice);
+            updatedProduct.Description.ShouldBe(originalProduct.Description);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_Should_Update_UpdatedAt_Timestamp()
+        {
+            // Arrange
+            var existingProductId = _productIds[0];
+            var originalProduct = await _context.Products.FindAsync(existingProductId);
+            var originalUpdatedAt = originalProduct!.UpdatedAt;
+
+            var beforeUpdate = DateTime.UtcNow;
+            await Task.Delay(10);
+
+            var updateDto = new ProductUpdateDto
+            {
+                Name = "Time Update Test"
+            };
+
+            // Act
+            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+            var afterUpdate = DateTime.UtcNow;
+
+            // Assert
+            result.ShouldBeTrue();
+
+            var updatedProduct = await _context.Products.FindAsync(existingProductId);
+            updatedProduct.ShouldNotBeNull();
+            updatedProduct.UpdatedAt.ShouldBeGreaterThan(originalUpdatedAt);
+            updatedProduct.UpdatedAt.ShouldBeGreaterThanOrEqualTo(beforeUpdate);
+            updatedProduct.UpdatedAt.ShouldBeLessThanOrEqualTo(afterUpdate);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_Should_Return_False_For_Empty_Guid()
+        {
+            // Arrange
+            var updateDto = new ProductUpdateDto
+            {
+                Name = "Empty Guid Test"
+            };
+
+            // Act
+            var result = await _service.UpdateAsync(Guid.Empty, updateDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeFalse();
+        }
+
+        [Theory]
+        [InlineData("Name", "Updated Product Name")]
+        [InlineData("Description", "Updated description text")]
+        [InlineData("ImageUrl", "https://example.com/updated-image.jpg")]
+        [InlineData("Category", "Updated Category")]
+        [InlineData("SKU", "UPDATED-SKU-001")]
+        [InlineData("Tags", "updated,tags,test")]
+        public async Task UpdateAsync_Should_Update_Individual_String_Fields(string fieldName, string newValue)
+        {
+            // Arrange
+            var existingProductId = _productIds[1];
+            var updateDto = new ProductUpdateDto();
+
+            switch (fieldName)
+            {
+                case "Name":
+                    updateDto.Name = newValue;
+                    break;
+                case "Description":
+                    updateDto.Description = newValue;
+                    break;
+                case "ImageUrl":
+                    updateDto.ImageUrl = newValue;
+                    break;
+                case "Category":
+                    updateDto.Category = newValue;
+                    break;
+                case "SKU":
+                    updateDto.SKU = newValue;
+                    break;
+                case "Tags":
+                    updateDto.Tags = newValue;
+                    break;
+            }
+
+            // Act
+            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeTrue();
+
+            var updatedProduct = await _context.Products.FindAsync(existingProductId);
+            updatedProduct.ShouldNotBeNull();
+
+            switch (fieldName)
+            {
+                case "Name":
+                    updatedProduct.Name.ShouldBe(newValue);
+                    break;
+                case "Description":
+                    updatedProduct.Description.ShouldBe(newValue);
+                    break;
+                case "ImageUrl":
+                    updatedProduct.ImageUrl.ShouldBe(newValue);
+                    break;
+                case "Category":
+                    updatedProduct.Category.ShouldBe(newValue);
+                    break;
+                case "SKU":
+                    updatedProduct.SKU.ShouldBe(newValue);
+                    break;
+                case "Tags":
+                    updatedProduct.Tags.ShouldBe(newValue);
+                    break;
+            }
+        }
+
+        [Theory]
+        [InlineData("Price", 199.99)]
+        [InlineData("Quantity", 50)]
+        [InlineData("Rating", 4.8)]
+        [InlineData("Discount", 25.5)]
+        public async Task UpdateAsync_Should_Update_Individual_Numeric_Fields(string fieldName, decimal newValue)
+        {
+            // Arrange
+            var existingProductId = _productIds[2];
+            var updateDto = new ProductUpdateDto();
+
+            switch (fieldName)
+            {
+                case "Price":
+                    updateDto.Price = newValue;
+                    break;
+                case "Quantity":
+                    updateDto.Quantity = (int)newValue;
+                    break;
+                case "Rating":
+                    updateDto.Rating = (double)newValue;
+                    break;
+                case "Discount":
+                    updateDto.Discount = newValue;
+                    break;
+            }
+
+            // Act
+            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeTrue();
+
+            var updatedProduct = await _context.Products.FindAsync(existingProductId);
+            updatedProduct.ShouldNotBeNull();
+
+            switch (fieldName)
+            {
+                case "Price":
+                    updatedProduct.Price.ShouldBe(newValue);
+                    break;
+                case "Quantity":
+                    updatedProduct.Quantity.ShouldBe((int)newValue);
+                    break;
+                case "Rating":
+                    updatedProduct.Rating.ShouldBe((double)newValue);
+                    break;
+                case "Discount":
+                    updatedProduct.Discount.ShouldBe(newValue);
+                    break;
+            }
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task UpdateAsync_Should_Update_IsAvailable_Field(bool newAvailability)
+        {
+            // Arrange
+            var existingProductId = _productIds[0];
+            var updateDto = new ProductUpdateDto
+            {
+                IsAvailable = newAvailability
+            };
+
+            // Act
+            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeTrue();
+
+            var updatedProduct = await _context.Products.FindAsync(existingProductId);
+            updatedProduct.ShouldNotBeNull();
+            updatedProduct.IsAvailable.ShouldBe(newAvailability);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_Should_Not_Change_CreatedAt()
+        {
+            // Arrange
+            var existingProductId = _productIds[0];
+            var originalProduct = await _context.Products.FindAsync(existingProductId);
+            var originalCreatedAt = originalProduct!.CreatedAt;
+
+            var updateDto = new ProductUpdateDto
+            {
+                Name = "CreatedAt Test Update"
+            };
+
+            // Act
+            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeTrue();
+
+            var updatedProduct = await _context.Products.FindAsync(existingProductId);
+            updatedProduct.ShouldNotBeNull();
+            updatedProduct.CreatedAt.ShouldBe(originalCreatedAt);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_Should_Handle_Empty_Update_Dto()
+        {
+            // Arrange
+            var existingProductId = _productIds[0];
+            var originalProduct = await _context.Products.FindAsync(existingProductId);
+            var originalUpdatedAt = originalProduct!.UpdatedAt;
+            var updateDto = new ProductUpdateDto();
+
+            // Act
+            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeTrue();
+
+            var updatedProduct = await _context.Products.FindAsync(existingProductId);
+            updatedProduct.ShouldNotBeNull();
+
+            updatedProduct.Name.ShouldBe(originalProduct.Name);
+            updatedProduct.Description.ShouldBe(originalProduct.Description);
+            updatedProduct.Price.ShouldBe(originalProduct.Price);
+            updatedProduct.Quantity.ShouldBe(originalProduct.Quantity);
+            updatedProduct.UpdatedAt.ShouldBeGreaterThan(originalUpdatedAt);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_Should_Handle_Cancellation_Token()
+        {
+            // Arrange
+            var existingProductId = _productIds[0];
+            var updateDto = new ProductUpdateDto
+            {
+                Name = "Cancellation Test Update"
+            };
+
+            using var cts = new CancellationTokenSource();
+
+            // Act & Assert
+            var result = await _service.UpdateAsync(existingProductId, updateDto, cts.Token);
+            result.ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task UpdateAsync_Should_Handle_Decimal_Precision()
+        {
+            // Arrange
+            var existingProductId = _productIds[0];
+            var updateDto = new ProductUpdateDto
+            {
+                Price = 99.999m,
+                Discount = 15.555m
+            };
+
+            // Act
+            var result = await _service.UpdateAsync(existingProductId, updateDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldBeTrue();
+
+            var updatedProduct = await _context.Products.FindAsync(existingProductId);
+            updatedProduct.ShouldNotBeNull();
+            updatedProduct.Price.ShouldBe(99.999m);
+            updatedProduct.Discount.ShouldBe(15.555m);
+        }
+
+        #endregion
+
+        #region Additional Create Tests
+
+        [Fact]
+        public async Task CreateAsync_Should_Set_CreatedAt_And_UpdatedAt()
+        {
+            // Arrange
+            var beforeCreate = DateTime.UtcNow;
+            var createDto = new ProductCreateDto
+            {
+                Name = "Time Test Product",
+                Description = "Testing timestamps",
+                Price = 25m,
+                Quantity = 1,
+                ImageUrl = "https://example.com/time-test.jpg",
+                Category = "Test",
+                SKU = "TIME-001",
+                IsAvailable = true,
+                Rating = 3,
+                Tags = "test,time",
+                Discount = 0m
+            };
+
+            // Act
+            var result = await _service.CreateAsync(createDto, CancellationToken.None);
+            var afterCreate = DateTime.UtcNow;
+
+            // Assert
+            var savedProduct = await _context.Products.FindAsync(result.Id);
+            savedProduct.ShouldNotBeNull();
+            savedProduct.CreatedAt.ShouldBeGreaterThanOrEqualTo(beforeCreate);
+            savedProduct.CreatedAt.ShouldBeLessThanOrEqualTo(afterCreate);
+            savedProduct.UpdatedAt.ShouldBeGreaterThanOrEqualTo(beforeCreate);
+            savedProduct.UpdatedAt.ShouldBeLessThanOrEqualTo(afterCreate);
+        }
+
+        [Fact]
+        public async Task CreateAsync_Should_Generate_Unique_Guid()
+        {
+            // Arrange
+            var createDto1 = new ProductCreateDto
+            {
+                Name = "Product 1",
+                Description = "First product",
+                Price = 10m,
+                Quantity = 1,
+                ImageUrl = "https://example.com/product1.jpg",
+                Category = "Test",
+                SKU = "UNIQUE-001",
+                IsAvailable = true,
+                Rating = 5,
+                Tags = "test",
+                Discount = 0m
+            };
+
+            var createDto2 = new ProductCreateDto
+            {
+                Name = "Product 2",
+                Description = "Second product",
+                Price = 20m,
+                Quantity = 2,
+                ImageUrl = "https://example.com/product2.jpg",
+                Category = "Test",
+                SKU = "UNIQUE-002",
+                IsAvailable = true,
+                Rating = 4,
+                Tags = "test",
+                Discount = 0m
+            };
+
+            // Act
+            var result1 = await _service.CreateAsync(createDto1, CancellationToken.None);
+            var result2 = await _service.CreateAsync(createDto2, CancellationToken.None);
+
+            // Assert
+            result1.Id.ShouldNotBe(Guid.Empty);
+            result2.Id.ShouldNotBe(Guid.Empty);
+            result1.Id.ShouldNotBe(result2.Id);
+        }
+
+        [Theory]
+        [InlineData(0.1)]
+        [InlineData(99.99)]
+        [InlineData(1000.50)]
+        public async Task CreateAsync_Should_Handle_Valid_Prices(decimal price)
+        {
+            // Arrange
+            var createDto = new ProductCreateDto
+            {
+                Name = $"Price Test Product {price}",
+                Description = "Testing valid prices",
+                Price = price,
+                Quantity = 1,
+                ImageUrl = "https://example.com/price-test.jpg",
+                Category = "Test",
+                SKU = $"PRICE-{price:0.00}".Replace(".", ""),
+                IsAvailable = true,
+                Rating = 4,
+                Tags = "test,price",
+                Discount = 0m
+            };
+
+            // Act
+            var result = await _service.CreateAsync(createDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Price.ShouldBe(price);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(4)]
+        [InlineData(5)]
+        public async Task CreateAsync_Should_Handle_Valid_Ratings(double rating)
+        {
+            // Arrange
+            var createDto = new ProductCreateDto
+            {
+                Name = $"Rating Test Product {rating}",
+                Description = "Testing valid ratings",
+                Price = 25m,
+                Quantity = 1,
+                ImageUrl = "https://example.com/rating-test.jpg",
+                Category = "Test",
+                SKU = $"RATING-{rating}",
+                IsAvailable = true,
+                Rating = rating,
+                Tags = "test,rating",
+                Discount = 0m
+            };
+
+            // Act
+            var result = await _service.CreateAsync(createDto, CancellationToken.None);
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Rating.ShouldBe(rating);
+        }
+
+        [Fact]
+        public async Task CreateAsync_Should_Handle_Cancellation_Token()
+        {
+            // Arrange
+            var createDto = new ProductCreateDto
+            {
+                Name = "Cancellation Test Product",
+                Description = "Testing cancellation",
+                Price = 30m,
+                Quantity = 1,
+                ImageUrl = "https://example.com/cancel.jpg",
+                Category = "Test",
+                SKU = "CANCEL-001",
+                IsAvailable = true,
+                Rating = 3,
+                Tags = "test",
+                Discount = 0m
+            };
+
+            using var cts = new CancellationTokenSource();
+
+            // Act & Assert
+            var result = await _service.CreateAsync(createDto, cts.Token);
+            result.ShouldNotBeNull();
         }
 
         #endregion
