@@ -10,11 +10,11 @@ namespace OtakuNest.ProductService.Parameters
         public decimal? MaxPrice { get; set; }
         public bool? IsAvailable { get; set; }
         public string? SKU { get; set; }
-
+        public string? Tags { get; set; }
         public double? MinRating { get; set; }
         public double? MaxRating { get; set; }
-
         public decimal? MinDiscount { get; set; }
         public decimal? MaxDiscount { get; set; }
+        
     }
 }
