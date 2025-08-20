@@ -1,8 +1,10 @@
 ﻿using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using OtakuNest.Common.Services.Caching;
 using OtakuNest.ProductService.Consumers;
 using OtakuNest.ProductService.Data;
 using OtakuNest.ProductService.Services;
+using StackExchange.Redis;
 
 namespace OtakuNest.ProductService.Extensions
 {
@@ -12,6 +14,17 @@ namespace OtakuNest.ProductService.Extensions
         {
             services.AddDbContext<ProductDbContext>(options =>
                 options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            return services;
+        }
+
+        public static IServiceCollection AddRedisCache(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = configuration.GetConnectionString("Redis");
+                options.InstanceName = "ProductService";
+            });
+
             return services;
         }
 
@@ -53,8 +66,11 @@ namespace OtakuNest.ProductService.Extensions
 
         public static IServiceCollection AddAppServices(this IServiceCollection services)
         {
+            services.AddScoped<IRedisCacheService, RedisCacheService>();
+
             services.AddScoped<IProductService, Services.ProductService>();
             services.AddScoped<ProductSeeder>();
+
             return services;
         }
     }

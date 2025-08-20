@@ -10,6 +10,7 @@ builder.Services
     .AddSwaggerWithJwt()
     .AddAppDbContext(builder.Configuration)
     .AddRabbitMq()
+    .AddRedisCache(builder.Configuration)
     .AddAppServices()
     .AddCommonHelpers()
     .AddFluentValidationSetup(typeof(Program).Assembly)
