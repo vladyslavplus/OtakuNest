@@ -23,7 +23,6 @@ namespace OtakuNest.CommentService.Data
             modelBuilder.Entity<Comment>()
                 .HasIndex(c => c.UserId);
 
-
             modelBuilder.Entity<Comment>()
                 .HasOne(c => c.ParentComment)
                 .WithMany(c => c.Replies)
@@ -33,6 +32,9 @@ namespace OtakuNest.CommentService.Data
             modelBuilder.Entity<CommentLike>()
                 .HasIndex(cl => new { cl.CommentId, cl.UserId })
                 .IsUnique();
+
+            modelBuilder.Entity<CommentLike>()
+                .HasIndex(x => x.CommentId);
         }
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using OtakuNest.CommentService.Data;
 using OtakuNest.CommentService.Services;
+using OtakuNest.Common.Services.Caching;
 using OtakuNest.Contracts;
 
 namespace OtakuNest.CommentService.Extensions
@@ -12,6 +13,17 @@ namespace OtakuNest.CommentService.Extensions
         {
             services.AddDbContext<CommentDbContext>(options =>
                 options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            return services;
+        }
+
+        public static IServiceCollection AddRedisCache(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = configuration.GetConnectionString("Redis");
+                options.InstanceName = "CommentService";
+            });
+
             return services;
         }
 
@@ -36,6 +48,8 @@ namespace OtakuNest.CommentService.Extensions
 
         public static IServiceCollection AddAppServices(this IServiceCollection services)
         {
+            services.AddScoped<IRedisCacheService, RedisCacheService>();
+
             services.AddScoped<ICommentService, Services.CommentService>();
             services.AddScoped<ICommentLikeService, CommentLikeService>();
             return services;
