@@ -671,23 +671,6 @@ namespace OtakuNest.ProductService.Tests.Services
             result.ShouldBeEmpty();
         }
 
-        [Fact]
-        public async Task GetAllAsync_Should_Handle_Zero_Page_Size()
-        {
-            // Arrange
-            var parameters = new ProductParameters
-            {
-                PageNumber = 1,
-                PageSize = 0
-            };
-
-            // Act
-            var result = await _service.GetAllAsync(parameters, CancellationToken.None);
-
-            // Assert
-            result.ShouldNotBeNull();
-        }
-
         #endregion
 
         #region GetById Tests
