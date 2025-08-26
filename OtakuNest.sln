@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.ProductService.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.CommentService.Tests", "Tests\OtakuNest.CommentService.Tests\OtakuNest.CommentService.Tests.csproj", "{55DF14CD-B112-4C5F-8D54-92F91AAB1149}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.CartService.Tests", "OtakuNest.CartService.Tests\OtakuNest.CartService.Tests.csproj", "{586D9D7E-6F2B-4441-ABF3-4AB72F138801}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -85,6 +87,10 @@ Global
 		{55DF14CD-B112-4C5F-8D54-92F91AAB1149}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{55DF14CD-B112-4C5F-8D54-92F91AAB1149}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{55DF14CD-B112-4C5F-8D54-92F91AAB1149}.Release|Any CPU.Build.0 = Release|Any CPU
+		{586D9D7E-6F2B-4441-ABF3-4AB72F138801}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{586D9D7E-6F2B-4441-ABF3-4AB72F138801}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{586D9D7E-6F2B-4441-ABF3-4AB72F138801}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{586D9D7E-6F2B-4441-ABF3-4AB72F138801}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -92,6 +98,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{B56DFDD9-2951-4A52-8596-BAFD7A46255B} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{55DF14CD-B112-4C5F-8D54-92F91AAB1149} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{586D9D7E-6F2B-4441-ABF3-4AB72F138801} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1FD12303-7F35-40D4-AC62-9D310137531B}
