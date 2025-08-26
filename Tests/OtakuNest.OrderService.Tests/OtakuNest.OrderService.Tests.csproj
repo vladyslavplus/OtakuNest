@@ -21,8 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OtakuNest.CartService\OtakuNest.CartService.csproj" />
-    <ProjectReference Include="..\OtakuNest.Common\OtakuNest.Common.csproj" />
+    <ProjectReference Include="..\..\OtakuNest.Common\OtakuNest.Common.csproj" />
+    <ProjectReference Include="..\..\OtakuNest.OrderService\OtakuNest.OrderService.csproj" />
   </ItemGroup>
 
   <ItemGroup>

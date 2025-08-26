@@ -35,9 +35,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.ProductService.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.CommentService.Tests", "Tests\OtakuNest.CommentService.Tests\OtakuNest.CommentService.Tests.csproj", "{55DF14CD-B112-4C5F-8D54-92F91AAB1149}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.CartService.Tests", "OtakuNest.CartService.Tests\OtakuNest.CartService.Tests.csproj", "{586D9D7E-6F2B-4441-ABF3-4AB72F138801}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.CartService.Tests", "Tests\OtakuNest.CartService.Tests\OtakuNest.CartService.Tests.csproj", "{D0133C02-1D23-E512-B807-13B7712DBD07}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.OrderService.Tests", "OtakuNest.OrderService.Tests\OtakuNest.OrderService.Tests.csproj", "{36E0F81C-1B96-4AAE-8C70-EB20B229B857}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.OrderService.Tests", "Tests\OtakuNest.OrderService.Tests\OtakuNest.OrderService.Tests.csproj", "{08ADCD63-9108-B495-216F-36DF5379205B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -89,14 +89,14 @@ Global
 		{55DF14CD-B112-4C5F-8D54-92F91AAB1149}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{55DF14CD-B112-4C5F-8D54-92F91AAB1149}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{55DF14CD-B112-4C5F-8D54-92F91AAB1149}.Release|Any CPU.Build.0 = Release|Any CPU
-		{586D9D7E-6F2B-4441-ABF3-4AB72F138801}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{586D9D7E-6F2B-4441-ABF3-4AB72F138801}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{586D9D7E-6F2B-4441-ABF3-4AB72F138801}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{586D9D7E-6F2B-4441-ABF3-4AB72F138801}.Release|Any CPU.Build.0 = Release|Any CPU
-		{36E0F81C-1B96-4AAE-8C70-EB20B229B857}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{36E0F81C-1B96-4AAE-8C70-EB20B229B857}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{36E0F81C-1B96-4AAE-8C70-EB20B229B857}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{36E0F81C-1B96-4AAE-8C70-EB20B229B857}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0133C02-1D23-E512-B807-13B7712DBD07}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0133C02-1D23-E512-B807-13B7712DBD07}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0133C02-1D23-E512-B807-13B7712DBD07}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0133C02-1D23-E512-B807-13B7712DBD07}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08ADCD63-9108-B495-216F-36DF5379205B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08ADCD63-9108-B495-216F-36DF5379205B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08ADCD63-9108-B495-216F-36DF5379205B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08ADCD63-9108-B495-216F-36DF5379205B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -104,8 +104,8 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{B56DFDD9-2951-4A52-8596-BAFD7A46255B} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{55DF14CD-B112-4C5F-8D54-92F91AAB1149} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
-		{586D9D7E-6F2B-4441-ABF3-4AB72F138801} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
-		{36E0F81C-1B96-4AAE-8C70-EB20B229B857} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{D0133C02-1D23-E512-B807-13B7712DBD07} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{08ADCD63-9108-B495-216F-36DF5379205B} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1FD12303-7F35-40D4-AC62-9D310137531B}
