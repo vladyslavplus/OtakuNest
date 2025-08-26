@@ -136,6 +136,9 @@ namespace OtakuNest.OrderService.Services
 
         public async Task<OrderDto> CreateOrderAsync(Guid userId, CreateOrderDto dto, CancellationToken cancellationToken = default)
         {
+            if (dto.Items == null || !dto.Items.Any())
+                throw new InvalidOperationException("Order must contain at least one item.");
+
             var order = new Order
             {
                 Id = Guid.NewGuid(),
