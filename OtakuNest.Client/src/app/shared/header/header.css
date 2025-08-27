@@ -129,13 +129,14 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1000;
     max-height: 320px;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 .search-dropdown.active {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+    overflow: hidden;
 }
 
 .search-results {
@@ -331,7 +332,7 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1000;
     max-height: 280px;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 .mobile-search-dropdown .loading-spinner-small {
@@ -344,6 +345,7 @@
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+    overflow: hidden;
 }
 
 .search-dropdown.loading {

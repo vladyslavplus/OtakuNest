@@ -18,6 +18,7 @@
           (input)="onSearchInput($event)"
           (focus)="onSearchFocus()"
           (blur)="onSearchBlur()"
+          (keyup.enter)="performSearch()"
           #searchInput>
 
         <button class="search-btn" (click)="performSearch()">🔍</button>
@@ -26,7 +27,9 @@
           @if (searchResults.length > 0) {
             <div class="search-results">
               @for (product of searchResults; track product.id) {
-                <div class="search-result-item" (click)="selectProduct(product)">
+                <div class="search-result-item" 
+                     (mousedown)="selectProduct(product, $event)"
+                     (click)="selectProduct(product, $event)">
                   <img [src]="product.imageUrl" [alt]="product.name" class="result-image">
                   <div class="result-info">
                     <h4 class="result-name">{{ product.name }}</h4>
@@ -111,7 +114,9 @@
           @if (mobileSearchResults.length > 0) {
             <div class="search-results">
               @for (product of mobileSearchResults; track product.id) {
-                <div class="search-result-item" (click)="selectMobileProduct(product)">
+                <div class="search-result-item" 
+                     (mousedown)="selectMobileProduct(product, $event)"
+                     (click)="selectMobileProduct(product, $event)">
                   <img [src]="product.imageUrl" [alt]="product.name" class="result-image">
                   <div class="result-info">
                     <h4 class="result-name">{{ product.name }}</h4>

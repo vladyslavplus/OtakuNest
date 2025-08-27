@@ -1,12 +1,12 @@
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Product } from '../../features/product/models/product.model';
 import { catchError, debounceTime, distinctUntilChanged, map, Observable, of, startWith, Subject, switchMap, takeUntil } from 'rxjs';
-import { ProductService } from '../../features/product/services/product.service';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../features/user/services/auth.service';
 import { CartService } from '../../features/cart/services/cart.service';
+import { ProductElasticDto } from '../../features/search/models/product-elastic.dto';
+import { SearchService } from '../../features/search/services/search.service';
 
 @Component({
   selector: 'app-header',
@@ -23,14 +23,14 @@ export class Header implements OnInit, OnDestroy {
 
   // Desktop search
   searchQuery = '';
-  searchResults: Product[] = [];
+  searchResults: ProductElasticDto[] = [];
   showSearchDropdown = false;
   showNoResults = false;
   isSearching = false;
 
   // Mobile search
   mobileSearchQuery = '';
-  mobileSearchResults: Product[] = [];
+  mobileSearchResults: ProductElasticDto[] = [];
   showMobileSearchDropdown = false;
   showMobileNoResults = false;
   isMobileSearching = false;
@@ -45,15 +45,14 @@ export class Header implements OnInit, OnDestroy {
   private readonly MOBILE_BREAKPOINT = 640;
   private readonly SEARCH_BLUR_DELAY = 200;
 
-
   cartItemCount$!: Observable<number>;
 
   constructor(
     private readonly router: Router,
-    private readonly productService: ProductService,
+    private readonly searchService: SearchService,
     private readonly authService: AuthService,
     private readonly cartService: CartService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.checkScreenSize();
@@ -62,7 +61,7 @@ export class Header implements OnInit, OnDestroy {
 
     this.cartItemCount$ = this.cartService.cartItems$.pipe(
       map(items => items.reduce((total, item) => total + item.quantity, 0)),
-      startWith(0) 
+      startWith(0)
     );
   }
 
@@ -79,14 +78,20 @@ export class Header implements OnInit, OnDestroy {
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event): void {
     const target = event.target as HTMLElement;
-    
+
     if (!target.closest('.search-container')) {
       this.hideSearchDropdown();
     }
-    
+
     if (!target.closest('.mobile-search-wrapper')) {
       this.hideMobileSearchDropdown();
     }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEsc(): void { 
+    this.hideSearchDropdown(); 
+    this.hideMobileSearchDropdown(); 
   }
 
   private initializeAuthSubscription(): void {
@@ -100,7 +105,7 @@ export class Header implements OnInit, OnDestroy {
   private initializeSearchSubscriptions(): void {
     this.searchSubject.pipe(
       debounceTime(this.SEARCH_DEBOUNCE_TIME),
-      distinctUntilChanged(),
+      distinctUntilChanged((a, b) => a.trim().toLowerCase() === b.trim().toLowerCase()),
       switchMap(query => this.fetchProducts(query, false)),
       takeUntil(this.destroy$)
     ).subscribe(results => {
@@ -121,10 +126,10 @@ export class Header implements OnInit, OnDestroy {
     this.router.navigate(['/products'], {
       queryParams: { category }
     });
-    this.closeMobileMenu(); 
+    this.closeMobileMenu();
   }
 
-  private handleSearchResults(results: Product[], isMobile: boolean): void {
+  private handleSearchResults(results: ProductElasticDto[], isMobile: boolean): void {
     if (isMobile) {
       this.isMobileSearching = false;
       this.mobileSearchResults = results;
@@ -140,33 +145,25 @@ export class Header implements OnInit, OnDestroy {
 
   private checkScreenSize(): void {
     this.isMobile = window.innerWidth <= this.MOBILE_BREAKPOINT;
-    
+
     if (!this.isMobile) {
       this.closeMobileMenu();
     }
   }
 
-  private fetchProducts(query: string, isMobile: boolean) {
+  private fetchProducts(query: string, isMobile: boolean): Observable<ProductElasticDto[]> {
     if (!query || query.length < this.SEARCH_MIN_LENGTH) {
-      return of([] as Product[]);
+      return of([] as ProductElasticDto[]);
     }
 
-    if (isMobile) {
-      this.isMobileSearching = true;
-    } else {
-      this.isSearching = true;
-    }
+    if (isMobile) this.isMobileSearching = true;
+    else this.isSearching = true;
 
-    return this.productService.getProducts({
-      name: query,
-      pageSize: this.SEARCH_RESULTS_LIMIT,
-      pageNumber: 1
-    }).pipe(
+    return this.searchService.searchProducts(query, 1, this.SEARCH_RESULTS_LIMIT).pipe(
       catchError((error) => {
         console.error('Search error:', error);
-        return of({ data: [], pagination: null });
-      }),
-      switchMap(response => of(response.data || []))
+        return of([] as ProductElasticDto[]);
+      })
     );
   }
 
@@ -178,13 +175,13 @@ export class Header implements OnInit, OnDestroy {
 
   handleLogoClick(event: Event): void {
     event.preventDefault();
-    
+
     if (this.router.url === '/') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       this.router.navigate(['/']);
     }
-    
+
     this.closeMobileMenu();
   }
 
@@ -194,7 +191,7 @@ export class Header implements OnInit, OnDestroy {
 
   toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
-    
+
     if (this.isMobileMenuOpen) {
       this.isMobileSearchOpen = false;
     }
@@ -202,7 +199,7 @@ export class Header implements OnInit, OnDestroy {
 
   toggleMobileSearch(): void {
     this.isMobileSearchOpen = !this.isMobileSearchOpen;
-    
+
     if (this.isMobileSearchOpen) {
       this.isMobileMenuOpen = false;
     }
@@ -241,15 +238,27 @@ export class Header implements OnInit, OnDestroy {
 
   performSearch(): void {
     const query = this.searchQuery.trim();
-    
+
     if (query) {
-      this.navigateToProductsWithSearch(query);
-      this.hideSearchDropdown();
+      if (this.searchResults.length === 1) {
+        this.selectProduct(this.searchResults[0]);
+      } else {
+        this.navigateToProductsWithSearch(query);
+        this.hideSearchDropdown();
+      }
     }
   }
 
-  selectProduct(product: Product): void {
-    this.router.navigate(['/products', product.id]);
+  selectProduct(product: ProductElasticDto, event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      this.router.navigate(['/products', product.id]);
+    });
+    
     this.hideSearchDropdown();
     this.searchQuery = '';
   }
@@ -275,16 +284,28 @@ export class Header implements OnInit, OnDestroy {
 
   performMobileSearch(): void {
     const query = this.mobileSearchQuery.trim();
-    
+
     if (query) {
-      this.navigateToProductsWithSearch(query);
-      this.closeMobileMenu();
-      this.mobileSearchQuery = '';
+      if (this.mobileSearchResults.length === 1) {
+        this.selectMobileProduct(this.mobileSearchResults[0]);
+      } else {
+        this.navigateToProductsWithSearch(query);
+        this.closeMobileMenu();
+        this.mobileSearchQuery = '';
+      }
     }
   }
 
-  selectMobileProduct(product: Product): void {
-    this.router.navigate(['/products', product.id]);
+  selectMobileProduct(product: ProductElasticDto, event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      this.router.navigate(['/products', product.id]);
+    });
+    
     this.closeMobileMenu();
     this.mobileSearchQuery = '';
   }
