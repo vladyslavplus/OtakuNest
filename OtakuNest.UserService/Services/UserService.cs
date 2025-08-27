@@ -12,11 +12,13 @@ namespace OtakuNest.UserService.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ISortHelper<ApplicationUser> _sortHelper;
+        private readonly bool _isInMemory;
 
-        public UserService(UserManager<ApplicationUser> userManager, ISortHelper<ApplicationUser> sortHelper)
+        public UserService(UserManager<ApplicationUser> userManager, ISortHelper<ApplicationUser> sortHelper, bool isInMemory = false)
         {
             _userManager = userManager;
             _sortHelper = sortHelper;
+            _isInMemory = isInMemory;
         }
 
         public async Task<PagedList<ApplicationUser>> GetUsersAsync(UserParameters parameters, CancellationToken cancellationToken = default)
@@ -24,13 +26,28 @@ namespace OtakuNest.UserService.Services
             IQueryable<ApplicationUser> query = _userManager.Users.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(parameters.UserName))
-                query = query.Where(u => EF.Functions.ILike(u.UserName!, $"%{parameters.UserName}%"));
+            {
+                if (_isInMemory)
+                    query = query.Where(u => u.UserName != null && u.UserName.Contains(parameters.UserName, StringComparison.OrdinalIgnoreCase));
+                else
+                    query = query.Where(u => EF.Functions.ILike(u.UserName!, $"%{parameters.UserName}%"));
+            }
 
             if (!string.IsNullOrWhiteSpace(parameters.Email))
-                query = query.Where(u => EF.Functions.ILike(u.Email!, $"%{parameters.Email}%"));
+            {
+                if (_isInMemory)
+                    query = query.Where(u => u.Email != null && u.Email.Contains(parameters.Email, StringComparison.OrdinalIgnoreCase));
+                else
+                    query = query.Where(u => EF.Functions.ILike(u.Email!, $"%{parameters.Email}%"));
+            }
 
             if (!string.IsNullOrWhiteSpace(parameters.PhoneNumber))
-                query = query.Where(u => u.PhoneNumber != null && EF.Functions.ILike(u.PhoneNumber, $"%{parameters.PhoneNumber}%"));
+            {
+                if (_isInMemory)
+                    query = query.Where(u => u.PhoneNumber != null && u.PhoneNumber.Contains(parameters.PhoneNumber, StringComparison.OrdinalIgnoreCase));
+                else
+                    query = query.Where(u => u.PhoneNumber != null && EF.Functions.ILike(u.PhoneNumber, $"%{parameters.PhoneNumber}%"));
+            }
 
             if (parameters.CreatedAtFrom.HasValue)
                 query = query.Where(u => u.CreatedAt >= parameters.CreatedAtFrom.Value);
@@ -46,7 +63,11 @@ namespace OtakuNest.UserService.Services
 
             query = _sortHelper.ApplySort(query, parameters.OrderBy);
 
-            return await PagedList<ApplicationUser>.ToPagedListAsync(query, parameters.PageNumber, parameters.PageSize, cancellationToken);
+            return await PagedList<ApplicationUser>.ToPagedListAsync(
+                query,
+                parameters.PageNumber,
+                parameters.PageSize,
+                cancellationToken);
         }
 
         public async Task<ApplicationUser?> GetUserByIdAsync(Guid id, CancellationToken cancellationToken = default)
