@@ -25,11 +25,11 @@ namespace OtakuNest.UserService.Services
         public async Task<string> GenerateTokenAsync(ApplicationUser user)
         {
             var authClaims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.UserName!),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.UserName!),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
 
             var userRoles = await _userManager.GetRolesAsync(user);
             foreach (var role in userRoles)
@@ -90,6 +90,7 @@ namespace OtakuNest.UserService.Services
 
             return token != null;
         }
+
         public async Task RevokeRefreshTokenAsync(string refreshToken)
         {
             var token = await _context.RefreshTokens.FirstOrDefaultAsync(t => t.Token == refreshToken);
