@@ -41,6 +41,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.OrderService.Test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.UserService.Tests", "Tests\OtakuNest.UserService.Tests\OtakuNest.UserService.Tests.csproj", "{9A2A11B1-926A-435C-A660-A7881D56D3CC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Integration", "Integration", "{373D08E0-A081-4341-BA9A-13C65F0301FD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OtakuNest.CartService.IntegrationTests", "Tests\Integration\OtakuNest.CartService.IntegrationTests\OtakuNest.CartService.IntegrationTests.csproj", "{05A30D54-F148-4E9F-B472-21EFACCBF563}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -103,6 +107,10 @@ Global
 		{9A2A11B1-926A-435C-A660-A7881D56D3CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9A2A11B1-926A-435C-A660-A7881D56D3CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9A2A11B1-926A-435C-A660-A7881D56D3CC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05A30D54-F148-4E9F-B472-21EFACCBF563}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05A30D54-F148-4E9F-B472-21EFACCBF563}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05A30D54-F148-4E9F-B472-21EFACCBF563}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05A30D54-F148-4E9F-B472-21EFACCBF563}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -113,6 +121,8 @@ Global
 		{D0133C02-1D23-E512-B807-13B7712DBD07} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{08ADCD63-9108-B495-216F-36DF5379205B} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{9A2A11B1-926A-435C-A660-A7881D56D3CC} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{373D08E0-A081-4341-BA9A-13C65F0301FD} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{05A30D54-F148-4E9F-B472-21EFACCBF563} = {373D08E0-A081-4341-BA9A-13C65F0301FD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1FD12303-7F35-40D4-AC62-9D310137531B}

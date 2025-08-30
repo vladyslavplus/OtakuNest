@@ -50,9 +50,6 @@ namespace OtakuNest.CartService.Services
 
             var availableQuantity = response.Message.AvailableQuantity;
 
-            if (availableQuantity < itemDto.Quantity)
-                throw new NotEnoughStockException(itemDto.ProductId, itemDto.Quantity, availableQuantity);
-
             var cart = await _context.Carts
                 .Include(c => c.Items)
                 .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
@@ -70,12 +67,15 @@ namespace OtakuNest.CartService.Services
                 var newQuantity = existingItem.Quantity + itemDto.Quantity;
 
                 if (newQuantity > availableQuantity)
-                    throw new NotEnoughStockException(itemDto.ProductId, itemDto.Quantity, availableQuantity);
+                    throw new NotEnoughStockException(itemDto.ProductId, newQuantity, availableQuantity);
 
                 existingItem.Quantity = newQuantity;
             }
             else
             {
+                if (itemDto.Quantity > availableQuantity)
+                    throw new NotEnoughStockException(itemDto.ProductId, itemDto.Quantity, availableQuantity);
+
                 cart.Items.Add(new CartItem
                 {
                     ProductId = itemDto.ProductId,
